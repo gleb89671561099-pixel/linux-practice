@@ -1,0 +1,1099 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Linux — С нуля до уверенного пользователя</title>
+    <style>
+        /* ===== RESET & BASE ===== */
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --bg: #0d1117;
+            --bg-card: #161b22;
+            --bg-code: #1c2333;
+            --border: #30363d;
+            --text: #e6edf3;
+            --text-muted: #8b949e;
+            --accent-ubuntu: #E95420;
+            --accent-arch: #1793d1;
+            --accent-green: #3fb950;
+            --accent-purple: #a371f7;
+            --accent-yellow: #d29922;
+            --radius: 12px;
+            --radius-sm: 8px;
+        }
+
+        html { scroll-behavior: smooth; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.7;
+            min-height: 100vh;
+        }
+
+        /* ===== HEADER ===== */
+        .hero {
+            text-align: center;
+            padding: 80px 20px 60px;
+            background: linear-gradient(180deg, #161b22 0%, var(--bg) 100%);
+            border-bottom: 1px solid var(--border);
+        }
+        .hero-icon { font-size: 64px; margin-bottom: 16px; }
+        .hero h1 {
+            font-size: clamp(2rem, 5vw, 3.2rem);
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--accent-ubuntu), var(--accent-arch));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 12px;
+        }
+        .hero p {
+            font-size: 1.15rem;
+            color: var(--text-muted);
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        /* ===== NAV TABS ===== */
+        .nav-wrapper {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: rgba(13,17,23,.85);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--border);
+        }
+        .nav {
+            display: flex;
+            max-width: 960px;
+            margin: 0 auto;
+            overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .nav::-webkit-scrollbar { display: none; }
+        .nav a {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 14px 20px;
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: .95rem;
+            font-weight: 600;
+            white-space: nowrap;
+            border-bottom: 3px solid transparent;
+            transition: .2s;
+        }
+        .nav a:hover { color: var(--text); }
+        .nav a.active { color: var(--accent-green); border-bottom-color: var(--accent-green); }
+
+        /* ===== MAIN ===== */
+        .container {
+            max-width: 960px;
+            margin: 0 auto;
+            padding: 40px 20px 100px;
+        }
+
+        /* ===== SECTIONS ===== */
+        .section { margin-bottom: 64px; }
+        .section-title {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 1.6rem;
+            font-weight: 700;
+            margin-bottom: 24px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--border);
+        }
+        .section-title .icon { font-size: 1.5rem; }
+
+        /* ===== DISTRO SELECTOR ===== */
+        .distro-tabs {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 28px;
+        }
+        .distro-tab {
+            flex: 1;
+            padding: 16px;
+            border: 2px solid var(--border);
+            border-radius: var(--radius);
+            background: var(--bg-card);
+            color: var(--text-muted);
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: .25s;
+            text-align: center;
+        }
+        .distro-tab:hover { border-color: var(--text-muted); }
+        .distro-tab.ubuntu.active { border-color: var(--accent-ubuntu); color: var(--accent-ubuntu); background: rgba(233,84,32,.08); }
+        .distro-tab.arch.active { border-color: var(--accent-arch); color: var(--accent-arch); background: rgba(23,147,209,.08); }
+
+        .distro-content { display: none; }
+        .distro-content.active { display: block; }
+
+        /* ===== CARDS ===== */
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 24px;
+            margin-bottom: 20px;
+        }
+        .card h3 {
+            font-size: 1.1rem;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* ===== STEP LIST ===== */
+        .steps { counter-reset: step; }
+        .step {
+            position: relative;
+            padding: 16px 16px 16px 60px;
+            margin-bottom: 16px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            counter-increment: step;
+        }
+        .step::before {
+            content: counter(step);
+            position: absolute;
+            left: 16px;
+            top: 16px;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--accent-green);
+            color: #000;
+            font-weight: 700;
+            font-size: .85rem;
+            border-radius: 50%;
+        }
+        .step p { margin-bottom: 8px; color: var(--text-muted); font-size: .95rem; }
+        .step p:last-child { margin-bottom: 0; }
+        .step .tip {
+            margin-top: 10px;
+            padding: 10px 14px;
+            background: rgba(210,153,34,.1);
+            border-left: 3px solid var(--accent-yellow);
+            border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+            font-size: .88rem;
+            color: var(--accent-yellow);
+        }
+
+        /* ===== CODE BLOCKS ===== */
+        .code-block {
+            position: relative;
+            background: var(--bg-code);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            margin: 10px 0;
+            overflow: hidden;
+        }
+        .code-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 14px;
+            background: rgba(48,54,61,.5);
+            font-size: .8rem;
+            color: var(--text-muted);
+        }
+        .code-header code {
+            font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', Consolas, monospace;
+            font-size: .88rem;
+            color: var(--accent-green);
+        }
+        .copy-btn {
+            background: none;
+            border: 1px solid var(--border);
+            color: var(--text-muted);
+            padding: 4px 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: .78rem;
+            transition: .2s;
+        }
+        .copy-btn:hover { color: var(--text); border-color: var(--text-muted); }
+        .copy-btn.copied { color: var(--accent-green); border-color: var(--accent-green); }
+        .code-block pre {
+            padding: 14px;
+            overflow-x: auto;
+            font-family: 'SF Mono', 'Fira Code', Consolas, monospace;
+            font-size: .88rem;
+            line-height: 1.6;
+        }
+
+        /* ===== INFO BOXES ===== */
+        .info-box {
+            padding: 16px 20px;
+            border-radius: var(--radius-sm);
+            margin: 16px 0;
+            font-size: .92rem;
+        }
+        .info-box.warning {
+            background: rgba(210,153,34,.1);
+            border: 1px solid rgba(210,153,34,.3);
+            color: var(--accent-yellow);
+        }
+        .info-box.success {
+            background: rgba(63,185,80,.1);
+            border: 1px solid rgba(63,185,80,.3);
+            color: var(--accent-green);
+        }
+        .info-box.info {
+            background: rgba(163,113,247,.1);
+            border: 1px solid rgba(163,113,247,.3);
+            color: var(--accent-purple);
+        }
+
+        /* ===== TABLE ===== */
+        .table-wrapper { overflow-x: auto; margin: 16px 0; }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: .9rem;
+        }
+        th, td {
+            padding: 12px 16px;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+        th {
+            background: var(--bg-card);
+            color: var(--text-muted);
+            font-weight: 600;
+            font-size: .82rem;
+            text-transform: uppercase;
+            letter-spacing: .5px;
+        }
+        td { color: var(--text-muted); }
+        td code {
+            background: var(--bg-code);
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-family: 'SF Mono', Consolas, monospace;
+            font-size: .85rem;
+            color: var(--accent-green);
+        }
+
+        /* ===== PROGRESS ===== */
+        .progress-bar {
+            width: 100%;
+            height: 6px;
+            background: var(--border);
+            border-radius: 3px;
+            margin: 20px 0;
+            overflow: hidden;
+        }
+        .progress-bar .fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent-green), var(--accent-arch));
+            border-radius: 3px;
+            transition: width .4s;
+        }
+
+        /* ===== QUIZ ===== */
+        .quiz {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 24px;
+            margin: 16px 0;
+        }
+        .quiz h4 { margin-bottom: 16px; }
+        .quiz-option {
+            display: block;
+            padding: 12px 16px;
+            margin-bottom: 8px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            transition: .2s;
+            font-size: .92rem;
+        }
+        .quiz-option:hover { border-color: var(--accent-purple); background: rgba(163,113,247,.05); }
+        .quiz-option.correct { border-color: var(--accent-green); background: rgba(63,185,80,.1); }
+        .quiz-option.wrong { border-color: #f85149; background: rgba(248,81,73,.1); }
+        .quiz-result {
+            margin-top: 12px;
+            padding: 10px 14px;
+            border-radius: var(--radius-sm);
+            font-weight: 600;
+            display: none;
+        }
+
+        /* ===== FOOTER ===== */
+        footer {
+            text-align: center;
+            padding: 40px 20px;
+            border-top: 1px solid var(--border);
+            color: var(--text-muted);
+            font-size: .85rem;
+        }
+
+        /* ===== RESPONSIVE ===== */
+        @media (max-width: 640px) {
+            .hero { padding: 50px 16px 40px; }
+            .hero-icon { font-size: 48px; }
+            .distro-tabs { flex-direction: column; }
+            .nav a { padding: 12px 14px; font-size: .85rem; }
+            .step { padding-left: 50px; }
+            .container { padding: 24px 16px 80px; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- ===== HERO ===== -->
+<header class="hero">
+    <div class="hero-icon">🐧</div>
+    <h1>Linux — С нуля до уверенного пользователя</h1>
+    <p>Пошаговое руководство для тех, кто никогда не работал с Linux. Установим систему, научимся управлять программами.</p>
+</header>
+
+<!-- ===== NAV ===== -->
+<nav class="nav-wrapper">
+    <div class="nav">
+        <a href="#install" class="active">📦 Установка</a>
+        <a href="#update">🔄 Обновление</a>
+        <a href="#install-app">📲 Программы</a>
+        <a href="#remove-app">🗑️ Удаление</a>
+        <a href="#quiz">🧠 Тест</a>
+    </div>
+</nav>
+
+<!-- ===== MAIN CONTENT ===== -->
+<main class="container">
+
+    <!-- ────────── 1. INSTALL ────────── -->
+    <section id="install" class="section">
+        <h2 class="section-title"><span class="icon">📦</span> Установка Linux</h2>
+
+        <div class="info-box info">
+            💡 <strong>Что это:</strong> Linux — это бесплатная операционная система, как Windows или macOS, но с открытым исходным кодом. Существует множество «вариантов» (дистрибутивов). Мы рассмотрим два самых популярных: <strong>Ubuntu</strong> (для новичков) и <strong>Arch Linux</strong> (для продвинутых).
+        </div>
+
+        <!-- Distro tabs -->
+        <div class="distro-tabs">
+            <button class="distro-tab ubuntu active" onclick="switchDistro('ubuntu')">
+                🟠 Ubuntu — просто и надёжно
+            </button>
+            <button class="distro-tab arch" onclick="switchDistro('arch')">
+                🔵 Arch Linux — гибко и современно
+            </button>
+        </div>
+
+        <!-- Ubuntu -->
+        <div id="ubuntu" class="distro-content active">
+            <div class="info-box success">
+                ✅ <strong>Ubuntu</strong> идеален для новичков. Красивый интерфейс, огромная поддержка, всё работает «из коробки».
+            </div>
+
+            <h3 style="margin: 24px 0 16px; font-size: 1.15rem;">Шаг 1 — Скачайте образ Ubuntu</h3>
+            <div class="steps">
+                <div class="step">
+                    <p>Зайдите на официальный сайт ubuntu.com/download/desktop</p>
+                    <p>Нажмите кнопку <strong>Download</strong> (Скачать)</p>
+                    <div class="tip">💡 Скачивание начнётся автоматически — файл весит около 4 ГБ</div>
+                </div>
+            </div>
+
+            <h3 style="margin: 24px 0 16px; font-size: 1.15rem;">Шаг 2 — Запишите на флешку</h3>
+            <div class="steps">
+                <div class="step">
+                    <p>Вам понадобится флешка минимум на 8 ГБ. Данные с неё будут удалены!</p>
+                </div>
+                <div class="step">
+                    <p>Скачайте программу <strong>Rufus</strong> (для Windows) или <strong>BalenaEtcher</strong> (для Windows / macOS / Linux)</p>
+                    <div class="code-block">
+                        <div class="code-header"><code>Rufus — rufus.ie</code><button class="copy-btn" onclick="copyCode(this)">📋 Копировать</button></div>
+                        <pre>Скачать: https://rufus.ie</pre>
+                    </div>
+                </div>
+                <div class="step">
+                    <p>Запустите программу, выберите скачанный ISO-образ и вашу флешку, нажмите «Старт»</p>
+                </div>
+            </div>
+
+            <h3 style="margin: 24px 0 16px; font-size: 1.15rem;">Шаг 3 — Загрузитесь с флешки</h3>
+            <div class="steps">
+                <div class="step">
+                    <p>Вставьте флешку в компьютер и включите его</p>
+                </div>
+                <div class="step">
+                    <p>Нажмите кнопку вызова загрузочного меню (обычно F12, F9, Esc или F2 — зависит от компьютера)</p>
+                    <div class="tip">💡 Если не знаете — попробуйте F12 или Esc</div>
+                </div>
+                <div class="step">
+                    <p>Выберите вашу флешку (UEFI: …) и нажмите Enter</p>
+                </div>
+            </div>
+
+            <h3 style="margin: 24px 0 16px; font-size: 1.15rem;">Шаг 4 — Установите Ubuntu</h3>
+            <div class="steps">
+                <div class="step">
+                    <p>Выберите язык — <strong>Русский</strong>, затем «Запустить Ubuntu без установки»</p>
+                </div>
+                <div class="step">
+                    <p>Проверьте, что всё работает (Wi-Fi, звук, экран). Нажмите «Установить Ubuntu»</p>
+                </div>
+                <div class="step">
+                    <p>Выберите тип установки:</p>
+                    <div class="table-wrapper">
+                        <table>
+                            <tr><th>Вариант</th><th>Когда выбрать</th></tr>
+                            <tr><td>Удалить диск и установить</td><td>Если у вас один диск и вы хотите только Linux</td></tr>
+                            <tr><td>Рядом с Windows</td><td>Если хотите выбирать систему при включении</td></tr>
+                        </table>
+                    </div>
+                </div>
+                <div class="step">
+                    <p>Выберите часовую зону и раскладку клавиатуры (Русская)</p>
+                </div>
+                <div class="step">
+                    <p>Придумайте имя пользователя и пароль</p>
+                    <div class="tip">💡 Запомните пароль — он понадобится при установке программ</div>
+                </div>
+                <div class="step">
+                    <p>Нажмите «Установить» и ждите 10–20 минут. Затем перезагрузите компьютер и выньте флешку</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Arch Linux -->
+        <div id="arch" class="distro-content">
+            <div class="info-box warning">
+                ⚠️ <strong>Arch Linux</strong> устанавливается вручную через командную строку. Здесь нет графического установщика. Вы будете собирать систему по частям. Рекомендуется, если вы хотите разобраться, как работает Linux изнутри.
+            </div>
+
+            <h3 style="margin: 24px 0 16px; font-size: 1.15rem;">Шаг 1 — Скачайте образ Arch Linux</h3>
+            <div class="steps">
+                <div class="step">
+                    <p>Зайдите на archlinux.org/download и скачайте последний ISO-образ</p>
+                </div>
+                <div class="step">
+                    <p>Запишите на флешку с помощью <strong>Rufus</strong> (в режиме DD) или <strong>BalenaEtcher</strong></p>
+                    <div class="tip">💡 В Rufus при записи Arch ISO выберите «DD-режим» вместо «ISO-режима»</div>
+                </div>
+            </div>
+
+            <h3 style="margin: 24px 0 16px; font-size: 1.15rem;">Шаг 2 — Загрузитесь с флешки</h3>
+            <div class="steps">
+                <div class="step">
+                    <p>Вставьте флешку, включите ПК, вызовите загрузочное меню (F12 / Esc / F9)</p>
+                </div>
+                <div class="step">
+                    <p>Выберите флешку — вы попадёте в командную строку Arch</p>
+                </div>
+            </div>
+
+            <h3 style="margin: 24px 0 16px; font-size: 1.15rem;">Шаг 3 — Подготовьте диск</h3>
+            <div class="steps">
+                <div class="step">
+                    <p>Проверьте, какой диск у вас:</p>
+                    <div class="code-block">
+                        <div class="code-header"><code>Проверка диска</code><button class="copy-btn" onclick="copyCode(this)">📋 Копировать</button></div>
+                        <pre>lsblk</pre>
+                    </div>
+                </div>
+                <div class="step">
+                    <p>Удалите все данные и создайте таблицу разделов (замените <code>sda</code> на ваш диск!):</p>
+                    <div class="code-block">
+                        <div class="code-header"><code>Создание разделов</code><button class="copy-btn" onclick="copyCode(this)">📋 Копировать</button></div>
+                        <pre>parted /dev/sda mklabel gpt
+parted /dev/sda mkpart primary ext4 1MiB 513MiB
+parted /dev/sda mkpart primary ext4 513MiB 100%
+parted /dev/sda set 1 boot on</pre>
+                    </div>
+                </div>
+                <div class="step">
+                    <p>Создайте файловую систему и активируйте:</p>
+                    <div class="code-block">
+                        <div class="code-header"><code>Форматирование</code><button class="copy-btn" onclick="copyCode(this)">📋 Копировать</button></div>
+                        <pre>mkfs.ext4 /dev/sda1
+mkfs.ext4 /dev/sda2
+mount /dev/sda2 /mnt
+mkdir /mnt/boot
+mount /dev/sda1 /mnt/boot</pre>
+                    </div>
+                </div>
+            </div>
+
+            <h3 style="margin: 24px 0 16px; font-size: 1.15rem;">Шаг 4 — Установите базовую систему</h3>
+            <div class="steps">
+                <div class="step">
+                    <p>Установите базовые пакеты:</p>
+                    <div class="code-block">
+                        <div class="code-header"><code>Установка базовой системы</code><button class="copy-btn" onclick="copyCode(this)">📋 Копировать</button></div>
+                        <pre>pacstrap /mnt base linux linux-firmware networkmanager vim</pre>
+                    </div>
+                </div>
+                <div class="step">
+                    <p>Создайте файл конфигурации:</p>
+                    <div class="code-block">
+                        <div class="code-header"><code>Генерация fstab</code><button class="copy-btn" onclick="copyCode(this)">📋 Копировать</button></div>
+                        <pre>genfstab -U /mnt >> /mnt/etc/fstab</pre>
+                    </div>
+                </div>
+                <div class="step">
+                    <p>Перейдите в новую систему:</p>
+                    <div class="code-block">
+                        <div class="code-header"><code>Chroot</code><button class="copy-btn" onclick="copyCode(this)">📋 Копировать</button></div>
+                        <pre>arch-chroot /mnt</pre>
+                    </div>
+                </div>
+            </div>
+
+            <h3 style="margin: 24px 0 16px; font-size: 1.15rem;">Шаг 5 — Настройте систему</h3>
+            <div class="steps">
+                <div class="step">
+                    <p>Установите часовой пояс:</p>
+                    <div class="code-block">
+                        <div class="code-header"><code>Часовой пояс</code><button class="copy-btn" onclick="copyCode(this)">📋 Копировать</button></div>
+                        <pre>ln -sf /usr/share/zoneinfo/Europe/Moscow /etc/localtime
+hwclock --systz</pre>
+                    </div>
+                </div>
+                <div class="step">
+                    <p>Раскомментируйте <code>en_US.UTF-8 UTF-8</code> в файле <code>/etc/locale.gen</code>:</p>
+                    <div class="code-block">
+                        <div class="code-header"><code>Локаль</code><button class="copy-btn" onclick="copyCode(this)">📋 Копировать</button></div>
+                        <pre>locale-gen
+echo "LANG=en_US.UTF-8" > /etc/locale.conf</pre>
+                    </div>
+                </div>
+                <div class="step">
+                    <p>Установите имя компьютера:</p>
+                    <div class="code-block">
+                        <div class="code-header"><code>Имя хоста</code><button class="copy-btn" onclick="copyCode(this)">📋 Копировать</button></div>
+                        <pre>echo "arch" > /etc/hostname</pre>
+                    </div>
+                </div>
+                <div class="step">
+                    <p>Установите пароль для root и создайте пользователя:</p>
+                    <div class="code-block">
+                        <div class="code-header"><code>Пользователи</code><button class="copy-btn" onclick="copyCode(this)">📋 Копировать</button></div>
+                        <pre>passwd
+useradd -m -g users -G wheel,storage,power -s /bin/bash yourname
+passwd yourname</pre>
+                    </div>
+                    <div class="tip">💡 Замените <code>yourname</code> на своё имя пользователя</div>
+                </div>
+                <div class="step">
+                    <p>Установите загрузчик GRUB:</p>
+                    <div class="code-block">
+                        <div class="code-header"><code>Загрузчик GRUB</code><button class="copy-btn" onclick="copyCode(this)">📋 Копировать</button></div>
+                        <pre>pacman -S grub efibootmgr
+grub-install --target=x86_64-efi --bootloader-id=GRUB
+grub-mkconfig -o /boot/grub/grub.cfg</pre>
+                    </div>
+                </div>
+            </div>
+
+            <h3 style="margin: 24px 0 16px; font-size: 1.15rem;">Шаг 6 — Графический интерфейс (опционально)</h3>
+            <div class="steps">
+                <div class="step">
+                    <p>Arch устанавливается без графического интерфейса. Чтобы его получить, установите GNOME:</p>
+                    <div class="code-block">
+                        <div class="code-header"><code>Установка GNOME</code><button class="copy-btn" onclick="copyCode(this)">📋 Копировать</button></div>
+                        <pre>pacman -S xorg xorg-server gnome gnome-session
+systemctl enable gdm</pre>
+                    </div>
+                </div>
+                <div class="step">
+                    <p>Выйдите из chroot и перезагрузитесь:</p>
+                    <div class="code-block">
+                        <div class="code-header"><code>Перезагрузка</code><button class="copy-btn" onclick="copyCode(this)">📋 Копировать</button></div>
+                        <pre>exit
+umount -R /mnt
+reboot</pre>
+                    </div>
+                    <div class="tip">💡 Не забудьте вынуть флешку!</div>
+                </div>
+            </div>
+
+            <div class="info-box info">
+                📚 <strong>Подробнее:</strong> Официальная <a href="https://wiki.archlinux.org/title/Installation_guide" target="_blank" style="color: var(--accent-purple);">Arch Linux Installation Guide</a> — самая подробная документация по установке Arch.
+            </div>
+        </div>
+    </section>
+
+    <!-- ────────── 2. UPDATE ────────── -->
+    <section id="update" class="section">
+        <h2 class="section-title"><span class="icon">🔄</span> Обновление системы</h2>
+
+        <div class="info-box info">
+            💡 <strong>Зачем обновлять:</strong> Обновления содержат исправления ошибок, новые функции и, самое главное — исправления безопасности.
+        </div>
+
+        <div class="distro-tabs">
+            <button class="distro-tab ubuntu active" onclick="switchDistroTab('update', 'ubuntu')">
+                🟠 Ubuntu
+            </button>
+            <button class="distro-tab arch" onclick="switchDistroTab('update', 'arch')">
+                🔵 Arch Linux
+            </button>
+        </div>
+
+        <div id="update-ubuntu" class="distro-content active">
+            <div class="steps">
+                <div class="step">
+                    <p>Откройте терминал. Нажмите <strong>Ctrl + Alt + T</strong></p>
+                </div>
+                <div class="step">
+                    <p>Обновите списки пакетов:</p>
+                    <div class="code-block">
+                        <div class="code-header"><code>Обновление списков пакетов</code><button class="copy-btn" onclick="copyCode(this)">📋 Копировать</button></div>
+                        <pre>sudo apt update</pre>
+                    </div>
+                    <div class="tip">💡 <code>sudo</code> — команда для выполнения от имени администратора. Введёте свой пароль</div>
+                </div>
+                <div class="step">
+                    <p>Обновите установленные программы:</p>
+                    <div class="code-block">
+                        <div class="code-header"><code>Обновление программ</code><button class="copy-btn" onclick="copyCode(this)">📋 Копировать</button></div>
+                        <pre>sudo apt upgrade</pre>
+                    </div>
+                </div>
+                <div class="step">
+                    <p>Для полного обновления (включая замену ядер):</p>
+                    <div class="code-block">
+                        <div class="code-header"><code>Полное обновление</code><button class="copy-btn" onclick="copyCode(this)">📋 Копировать</button></div>
+                        <pre>sudo apt full-upgrade</pre>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="update-arch" class="distro-content">
+            <div class="steps">
+                <div class="step">
+                    <p>Откройте терминал (Ctrl + Alt + T)</p>
+                </div>
+                <div class="step">
+                    <p>Обновите всю систему одной командой:</p>
+                    <div class="code-block">
+                        <div class="code-header"><code>Обновление Arch</code><button class="copy-btn" onclick="copyCode(this)">📋 Копировать</button></div>
+                        <pre>sudo pacman -Syu</pre>
+                    </div>
+                    <div class="tip">💡 В Arch это <strong>единственная</strong> команда для обновления. Она сама обновит и списки, и пакеты</div>
+                </div>
+                <div class="step">
+                    <p>Если используете AUR (пользовательские пакеты):</p>
+                    <div class="code-block">
+                        <div class="code-header"><code>AUR helper (yay)</code><button class="copy-btn" onclick="copyCode(this)">📋 Копировать</button></div>
+                        <pre>yay -Syu</pre>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ────────── 3. INSTALL APPS ────────── -->
+    <section id="install-app" class="section">
+        <h2 class="section-title"><span class="icon">📲</span> Установка программ</h2>
+
+        <div class="info-box info">
+            💡 <strong>Как это работает:</strong> В Linux программы устанавливаются через «менеджер пакетов» — это как App Store, но в командной строке. Менеджер сам скачает программу и все нужные зависимости.
+        </div>
+
+        <div class="distro-tabs">
+            <button class="distro-tab ubuntu active" onclick="switchDistroTab('apps', 'ubuntu')">
+                🟠 Ubuntu
+            </button>
+            <button class="distro-tab arch" onclick="switchDistroTab('apps', 'arch')">
+                🔵 Arch Linux
+            </button>
+        </div>
+
+        <div id="apps-ubuntu" class="distro-content active">
+            <h3 style="margin-bottom: 16px;">Основные команды</h3>
+            <div class="table-wrapper">
+                <table>
+                    <tr><th>Команда</th><th>Что делает</th></tr>
+                    <tr><td><code>sudo apt update</code></td><td>Обновить списки программ</td></tr>
+                    <tr><td><code>sudo apt install имя</code></td><td>Установить программу</td></tr>
+                    <tr><td><code>sudo apt install имя1 имя2</code></td><td>Установить несколько программ</td></tr>
+                </table>
+            </div>
+
+            <h3 style="margin: 24px 0 16px;">Примеры установки</h3>
+            <div class="steps">
+                <div class="step">
+                    <p>Установить браузер Chrome:</p>
+                    <div class="code-block">
+                        <div class="code-header"><code>Google Chrome</code><button class="copy-btn" onclick="copyCode(this)">📋 Копировать</button></div>
+                        <pre>sudo apt install google-chrome-stable</pre>
+                    </div>
+                </div>
+                <div class="step">
+                    <p>Установить VLC (видеоплеер):</p>
+                    <div class="code-block">
+                        <div class="code-header"><code>VLC</code><button class="copy-btn" onclick="copyCode(this)">📋 Копировать</button></div>
+                        <pre>sudo apt install vlc</pre>
+                    </div>
+                </div>
+                <div class="step">
+                    <p>Установить текстовый редактор VS Code:</p>
+                    <div class="code-block">
+                        <div class="code-header"><code>VS Code</code><button class="copy-btn" onclick="copyCode(this)">📋 Копировать</button></div>
+                        <pre>sudo apt install code</pre>
+                    </div>
+                </div>
+            </div>
+
+            <h3 style="margin: 24px 0 16px;">Установка через Snap</h3>
+            <div class="steps">
+                <div class="step">
+                    <p>Ubuntu также поддерживает <strong>Snap</strong> — универсальные пакеты:</p>
+                    <div class="code-block">
+                        <div class="code-header"><code>Snap</code><button class="copy-btn" onclick="copyCode(this)">📋 Копировать</button></div>
+                        <pre>sudo snap install telegram-desktop
+sudo snap install spotify</pre>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="apps-arch" class="distro-content">
+            <h3 style="margin-bottom: 16px;">Основные команды</h3>
+            <div class="table-wrapper">
+                <table>
+                    <tr><th>Команда</th><th>Что делает</th></tr>
+                    <tr><td><code>sudo pacman -S имя</code></td><td>Установить программу</td></tr>
+                    <tr><td><code>sudo pacman -S имя1 имя2</code></td><td>Установить несколько программ</td></tr>
+                </table>
+            </div>
+
+            <h3 style="margin: 24px 0 16px;">Примеры установки</h3>
+            <div class="steps">
+                <div class="step">
+                    <p>Установить браузер Firefox:</p>
+                    <div class="code-block">
+                        <div class="code-header"><code>Firefox</code><button class="copy-btn" onclick="copyCode(this)">📋 Копировать</button></div>
+                        <pre>sudo pacman -S firefox</pre>
+                    </div>
+                </div>
+                <div class="step">
+                    <p>Установить Telegram:</p>
+                    <div class="code-block">
+                        <div class="code-header"><code>Telegram</code><button class="copy-btn" onclick="copyCode(this)">📋 Копировать</button></div>
+                        <pre>sudo pacman -S telegram-desktop</pre>
+                    </div>
+                </div>
+                <div class="step">
+                    <p>Установить несколько программ сразу:</p>
+                    <div class="code-block">
+                        <div class="code-header"><code>Несколько программ</code><button class="copy-btn" onclick="copyCode(this)">📋 Копировать</button></div>
+                        <pre>sudo pacman -S vlc gimp filezilla</pre>
+                    </div>
+                </div>
+            </div>
+
+            <h3 style="margin: 24px 0 16px;">Установка из AUR (Arch User Repository)</h3>
+            <div class="steps">
+                <div class="step">
+                    <p>В AUR есть программы, которых нет в официальных репозиториях. Установите помощника <strong>yay</strong>:</p>
+                    <div class="code-block">
+                        <div class="code-header"><code>yay — AUR helper</code><button class="copy-btn" onclick="copyCode(this)">📋 Копировать</button></div>
+                        <pre>sudo pacman -S base-devel git
+git clone https://aur.archlinux.org/yay.git
+cd yay
+makepkg -si</pre>
+                    </div>
+                </div>
+                <div class="step">
+                    <p>Теперь можно устанавливать программы из AUR:</p>
+                    <div class="code-block">
+                        <div class="code-header"><code>Установка из AUR</code><button class="copy-btn" onclick="copyCode(this)">📋 Копировать</button></div>
+                        <pre>yay -S google-chrome</pre>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ────────── 4. REMOVE APPS ────────── -->
+    <section id="remove-app" class="section">
+        <h2 class="section-title"><span class="icon">🗑️</span> Удаление программ</h2>
+
+        <div class="distro-tabs">
+            <button class="distro-tab ubuntu active" onclick="switchDistroTab('remove', 'ubuntu')">
+                🟠 Ubuntu
+            </button>
+            <button class="distro-tab arch" onclick="switchDistroTab('remove', 'arch')">
+                🔵 Arch Linux
+            </button>
+        </div>
+
+        <div id="remove-ubuntu" class="distro-content active">
+            <div class="steps">
+                <div class="step">
+                    <p>Удалить программу (сохраняя конфигурационные файлы):</p>
+                    <div class="code-block">
+                        <div class="code-header"><code>Удаление (файлы настроек останутся)</code><button class="copy-btn" onclick="copyCode(this)">📋 Копировать</button></div>
+                        <pre>sudo apt remove имя_программы</pre>
+                    </div>
+                </div>
+                <div class="step">
+                    <p>Удалить программу <strong>и</strong> её конфиги полностью:</p>
+                    <div class="code-block">
+                        <div class="code-header"><code>Полное удаление</code><button class="copy-btn" onclick="copyCode(this)">📋 Копировать</button></div>
+                        <pre>sudo apt purge имя_программы</pre>
+                    </div>
+                </div>
+                <div class="step">
+                    <p>Удалить ненужные зависимости:</p>
+                    <div class="code-block">
+                        <div class="code-header"><code>Очистка</code><button class="copy-btn" onclick="copyCode(this)">📋 Копировать</button></div>
+                        <pre>sudo apt autoremove</pre>
+                    </div>
+                    <div class="tip">💡 Рекомендуется запускать после удаления программ — это освободит место</div>
+                </div>
+            </div>
+
+            <h3 style="margin: 24px 0 16px;">Удаление Snap</h3>
+            <div class="code-block">
+                <div class="code-header"><code>Snap</code><button class="copy-btn" onclick="copyCode(this)">📋 Копировать</button></div>
+                <pre>sudo snap remove telegram-desktop</pre>
+            </div>
+        </div>
+
+        <div id="remove-arch" class="distro-content">
+            <div class="steps">
+                <div class="step">
+                    <p>Удалить программу (сохраняя конфиги):</p>
+                    <div class="code-block">
+                        <div class="code-header"><code>Удаление</code><button class="copy-btn" onclick="copyCode(this)">📋 Копировать</button></div>
+                        <pre>sudo pacman -R имя_программы</pre>
+                    </div>
+                </div>
+                <div class="step">
+                    <p>Удалить программу <strong>и</strong> зависимости, которые больше не нужны:</p>
+                    <div class="code-block">
+                        <div class="code-header"><code>Удаление с зависимостями</code><button class="copy-btn" onclick="copyCode(this)">📋 Копировать</button></div>
+                        <pre>sudo pacman -Rs имя_программы</pre>
+                    </div>
+                </div>
+                <div class="step">
+                    <p>Очистить кэш пакетов (освобождает место):</p>
+                    <div class="code-block">
+                        <div class="code-header"><code>Очистка кэша</code><button class="copy-btn" onclick="copyCode(this)">📋 Копировать</button></div>
+                        <pre>sudo pacman -Sc</pre>
+                    </div>
+                    <div class="tip">💡 Это удалит скачанные файлы пакетов, но не установленные программы</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ────────── 5. QUIZ ────────── -->
+    <section id="quiz" class="section">
+        <h2 class="section-title"><span class="icon">🧠</span> Проверь себя</h2>
+
+        <div class="info-box success">
+            ✅ Пройдите небольшой тест, чтобы убедиться, что вы всё поняли!
+        </div>
+
+        <!-- Question 1 -->
+        <div class="quiz" data-correct="2">
+            <h4>1. Какая команда обновляет списки пакетов в Ubuntu?</h4>
+            <label class="quiz-option" onclick="checkAnswer(this, 1)">
+                <input type="radio" name="q1"> sudo apt upgrade
+            </label>
+            <label class="quiz-option" onclick="checkAnswer(this, 2)">
+                <input type="radio" name="q1"> sudo apt update
+            </label>
+            <label class="quiz-option" onclick="checkAnswer(this, 3)">
+                <input type="radio" name="q1"> sudo apt install
+            </label>
+            <div class="quiz-result"></div>
+        </div>
+
+        <!-- Question 2 -->
+        <div class="quiz" data-correct="3">
+            <h4>2. Какая команда устанавливает программу в Arch Linux?</h4>
+            <label class="quiz-option" onclick="checkAnswer(this, 1)">
+                <input type="radio" name="q2"> sudo apt install
+            </label>
+            <label class="quiz-option" onclick="checkAnswer(this, 2)">
+                <input type="radio" name="q2"> sudo yum install
+            </label>
+            <label class="quiz-option" onclick="checkAnswer(this, 3)">
+                <input type="radio" name="q2"> sudo pacman -S
+            </label>
+            <div class="quiz-result"></div>
+        </div>
+
+        <!-- Question 3 -->
+        <div class="quiz" data-correct="2">
+            <h4>3. Что делает команда <code>sudo apt purge</code>?</h4>
+            <label class="quiz-option" onclick="checkAnswer(this, 1)">
+                <input type="radio" name="q3"> Обновляет программу
+            </label>
+            <label class="quiz-option" onclick="checkAnswer(this, 2)">
+                <input type="radio" name="q3"> Удаляет программу вместе с файлами настроек
+            </label>
+            <label class="quiz-option" onclick="checkAnswer(this, 3)">
+                <input type="radio" name="q3"> Устанавливает программу
+            </label>
+            <div class="quiz-result"></div>
+        </div>
+
+        <!-- Question 4 -->
+        <div class="quiz" data-correct="1">
+            <h4>4. Какой дистрибутив Linux лучше для новичка?</h4>
+            <label class="quiz-option" onclick="checkAnswer(this, 1)">
+                <input type="radio" name="q4"> Ubuntu
+            </label>
+            <label class="quiz-option" onclick="checkAnswer(this, 2)">
+                <input type="radio" name="q4"> Arch Linux
+            </label>
+            <label class="quiz-option" onclick="checkAnswer(this, 3)">
+                <input type="radio" name="q4"> Gentoo
+            </label>
+            <div class="quiz-result"></div>
+        </div>
+
+        <div style="text-align: center; margin-top: 32px;">
+            <button onclick="showScore()" style="padding: 14px 40px; font-size: 1.05rem; font-weight: 600; background: var(--accent-green); color: #000; border: none; border-radius: var(--radius); cursor: pointer; transition: .2s;">
+                Показать результат
+            </button>
+        </div>
+        <div id="final-score" style="text-align: center; margin-top: 20px; font-size: 1.2rem; font-weight: 700; display: none;"></div>
+    </section>
+
+</main>
+
+<!-- ===== FOOTER ===== -->
+<footer>
+    <p>🐧 Создано с ❤️ для тех, кто хочет освоить Linux</p>
+    <p style="margin-top: 8px;">Официальная документация: <a href="https://help.ubuntu.com" target="_blank" style="color: var(--accent-purple);">Ubuntu</a> · <a href="https://wiki.archlinux.org" target="_blank" style="color: var(--accent-purple);">Arch Wiki</a></p>
+</footer>
+
+<!-- ===== JAVASCRIPT ===== -->
+<script>
+    // Copy code to clipboard
+    function copyCode(btn) {
+        const pre = btn.closest('.code-block').querySelector('pre');
+        const text = pre.textContent;
+        navigator.clipboard.writeText(text).then(() => {
+            btn.textContent = '✅ Скопировано!';
+            btn.classList.add('copied');
+            setTimeout(() => {
+                btn.textContent = '📋 Копировать';
+                btn.classList.remove('copied');
+            }, 2000);
+        });
+    }
+
+    // Switch distro tabs (scoped to the section so other sections keep their state)
+    function switchDistro(distro) {
+        switchDistroTab('', distro);
+    }
+
+    function switchDistroTab(section, distro) {
+        const sectionEl = event.target.closest('.section');
+        sectionEl.querySelectorAll('.distro-tab').forEach(tab => tab.classList.remove('active'));
+        sectionEl.querySelectorAll('.distro-content').forEach(c => c.classList.remove('active'));
+
+        event.target.classList.add('active');
+        const id = section ? `${section}-${distro}` : distro;
+        document.getElementById(id).classList.add('active');
+    }
+
+    // Quiz
+    function checkAnswer(label, selected) {
+        const quiz = label.closest('.quiz');
+        const correct = parseInt(quiz.dataset.correct);
+        const result = quiz.querySelector('.quiz-result');
+        const options = quiz.querySelectorAll('.quiz-option');
+
+        // Reset previous state
+        options.forEach(opt => opt.classList.remove('correct', 'wrong'));
+
+        if (selected === correct) {
+            label.classList.add('correct');
+            quiz.dataset.answered = 'correct';
+            result.style.display = 'block';
+            result.style.background = 'rgba(63,185,80,.1)';
+            result.style.color = 'var(--accent-green)';
+            result.textContent = '✅ Правильно!';
+        } else {
+            label.classList.add('wrong');
+            options[correct - 1].classList.add('correct');
+            quiz.dataset.answered = 'wrong';
+            result.style.display = 'block';
+            result.style.background = 'rgba(248,81,73,.1)';
+            result.style.color = '#f85149';
+            result.textContent = `❌ Неправильно. Верный ответ: «${options[correct - 1].textContent.trim()}»`;
+        }
+    }
+
+    function showScore() {
+        const quizzes = document.querySelectorAll('.quiz');
+        let score = 0;
+        let answered = 0;
+
+        quizzes.forEach(quiz => {
+            if (quiz.dataset.answered === 'correct') { score++; answered++; }
+            else if (quiz.dataset.answered === 'wrong') { answered++; }
+        });
+
+        const final = document.getElementById('final-score');
+        final.style.display = 'block';
+
+        if (answered < quizzes.length) {
+            final.style.color = 'var(--text-muted)';
+            final.textContent = `Отвечено ${answered} из ${quizzes.length} — пройдите оставшиеся вопросы выше 👆`;
+            return;
+        }
+
+        if (score === quizzes.length) {
+            final.style.color = 'var(--accent-green)';
+            final.textContent = `🎉 Отлично! ${score}/${quizzes.length} — вы готовы к Linux!`;
+        } else if (score >= quizzes.length / 2) {
+            final.style.color = 'var(--accent-yellow)';
+            final.textContent = `👍 Неплохо! ${score}/${quizzes.length} — перечитайте разделы и попробуйте снова`;
+        } else {
+            final.style.color = '#f85149';
+            final.textContent = `📖 ${score}/${quizzes.length} — стоит перечитать материал`;
+        }
+    }
+
+    // Active nav highlight
+    const sections = document.querySelectorAll('.section');
+    const navLinks = document.querySelectorAll('.nav a');
+
+    window.addEventListener('scroll', () => {
+        let current = '';
+        sections.forEach(section => {
+            const sectionTop = section.offsetTop - 100;
+            if (window.scrollY >= sectionTop) {
+                current = section.getAttribute('id');
+            }
+        });
+        navLinks.forEach(link => {
+            link.classList.remove('active');
+            if (link.getAttribute('href') === '#' + current) {
+                link.classList.add('active');
+            }
+        });
+    });
+</script>
+
+</body>
+</html>
