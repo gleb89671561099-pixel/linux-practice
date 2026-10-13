@@ -1,0 +1,2367 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Обучение Linux — с нуля до уверенного пользователя</title>
+<style>
+/* ============================================================
+   ПАЛИТРА / ПЕРЕМЕННЫЕ
+   ============================================================ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+    --color-primary: #00eeff;
+    --color-secondary: #a855f7;
+    --color-text: #e8e8e8;
+    --color-muted: #9a9ab0;
+    --color-bg: #08080e;
+    --color-surface: #ffffff26;
+    --glass-bg: #1a1a1a3d;
+    --glass-border: #ffffff20;
+    --glass-shadow: #00000080;
+    --matrix: #00ff41;
+    --danger: #ff5f56;
+    --warn: #ffbd2e;
+    --ok: #27c93f;
+    --radius: 20px;
+    --mono: ui-monospace, "SF Mono", "JetBrains Mono", "Fira Code", "Cascadia Code", Consolas, monospace;
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+    font-family: "Geist", "Segoe UI", system-ui, -apple-system, sans-serif;
+    background-color: var(--color-bg);
+    color: var(--color-text);
+    line-height: 1.6;
+    min-height: 100vh;
+    padding: 25px;
+    overflow-x: hidden;
+}
+
+/* ============================================================
+   ФОН: СВЕТЯЩИЕСЯ ШАРЫ + МАТРИЦА + СКАНЛАЙНЫ
+   ============================================================ */
+.orbs { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
+
+.orb { position: absolute; border-radius: 50%; filter: blur(100px); will-change: transform; }
+.orb-1 { width: 65%; height: 65%; top: -10%; left: -5%;
+         background: radial-gradient(circle, #0ea4e989 0%, transparent 70%); animation: drift 26s ease-in-out infinite; }
+.orb-2 { width: 55%; height: 55%; top: 20%; right: -15%;
+         background: radial-gradient(circle, #a855f789 0%, transparent 70%); animation: drift 32s ease-in-out infinite reverse; }
+.orb-3 { width: 60%; height: 60%; bottom: -20%; left: 10%;
+         background: radial-gradient(circle, #00eeff77 0%, transparent 70%); animation: drift 38s ease-in-out infinite; }
+.orb-4 { width: 40%; height: 40%; bottom: 5%; right: 5%;
+         background: radial-gradient(circle, #00ff4147 0%, transparent 70%); animation: drift 30s ease-in-out infinite reverse; }
+
+@keyframes drift {
+    0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+    50%      { transform: translate3d(4%, -4%, 0) scale(1.08); }
+}
+
+#matrix {
+    position: fixed;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+    opacity: .16;
+}
+
+.scanlines {
+    position: fixed;
+    inset: 0;
+    z-index: 2;
+    pointer-events: none;
+    background: repeating-linear-gradient(180deg, #ffffff08 0 1px, transparent 1px 4px);
+    opacity: .35;
+}
+
+/* ============================================================
+   СТЕКЛО — ОБЩИЙ КЛАСС
+   ============================================================ */
+.glass {
+    background-color: var(--glass-bg);
+    border-style: inset;
+    border-width: 2px 2px 1px 1px;
+    border-color: var(--glass-border);
+    border-radius: var(--radius);
+    box-shadow: 0 0 5px var(--glass-shadow);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+}
+
+.gradient-text {
+    background-image: linear-gradient(90deg, var(--color-primary) 0%, var(--color-secondary) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+}
+
+/* ============================================================
+   ШАПКА — ПИЛЛУЛЯ
+   ============================================================ */
+.site-header {
+    position: fixed;
+    top: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 100;
+    width: calc(100% - 20px);
+    max-width: 1000px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 15px;
+    padding: 12px 20px;
+    border-radius: 35px;
+    border: 2px inset transparent;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    transition: background-color .5s, border-color .5s, box-shadow .5s, transform .4s;
+}
+
+.site-header.scrolled {
+    background-color: var(--glass-bg);
+    border-color: var(--glass-border);
+    box-shadow: 0 0 5px var(--glass-shadow);
+}
+
+.logo {
+    font-family: var(--mono);
+    font-size: 1.05rem;
+    font-weight: 700;
+    letter-spacing: .5px;
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.logo .cursor {
+    display: inline-block;
+    width: 9px;
+    height: 1.05em;
+    margin-left: 3px;
+    background: var(--color-primary);
+    vertical-align: -2px;
+    animation: blink 1s steps(1) infinite;
+}
+
+@keyframes blink { 50% { opacity: 0; } }
+
+.nav { display: flex; align-items: center; gap: 15px; }
+
+.nav-link {
+    position: relative;
+    color: var(--color-text);
+    text-decoration: none;
+    font-size: .95rem;
+    padding: 5px 0;
+    transition: all .6s;
+}
+
+.nav-link::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    width: 0;
+    height: 2px;
+    background: var(--color-primary);
+    transition: width .3s;
+}
+
+.nav-link:hover::after,
+.nav-link.active::after { width: 100%; }
+
+.nav-link:hover, .nav-link.active { color: var(--color-primary); }
+
+.burger {
+    display: none;
+    flex-direction: column;
+    justify-content: center;
+    gap: 5px;
+    width: 42px;
+    height: 42px;
+    padding: 0;
+    background: none;
+    border: 0;
+    cursor: pointer;
+}
+
+.burger-line {
+    display: block;
+    width: 22px;
+    height: 2px;
+    margin: 0 auto;
+    background: var(--color-text);
+    transition: transform .3s, opacity .3s;
+}
+
+.burger.active .burger-line:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+.burger.active .burger-line:nth-child(2) { opacity: 0; }
+.burger.active .burger-line:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+
+/* ============================================================
+   HERO + ТЕРМИНАЛ
+   ============================================================ */
+main {
+    position: relative;
+    z-index: 10;
+    max-width: 1100px;
+    margin: 0 auto;
+    padding-top: 95px;
+    display: flex;
+    flex-direction: column;
+    gap: 25px;
+}
+
+.hero { padding: 30px; overflow: hidden; }
+
+.hero__status {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 18px;
+    padding: 6px 14px;
+    border-radius: 35px;
+    background: var(--color-surface);
+    font-family: var(--mono);
+    font-size: .78rem;
+    color: var(--color-text);
+}
+
+.pulse-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--ok);
+    animation: pulse 2s ease-out infinite;
+}
+
+@keyframes pulse {
+    0%   { box-shadow: 0 0 0 0 #27c93f80; }
+    70%  { box-shadow: 0 0 0 10px #27c93f00; }
+    100% { box-shadow: 0 0 0 0 #27c93f00; }
+}
+
+.hero__grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.05fr) minmax(0, .95fr);
+    gap: 30px;
+    align-items: center;
+}
+
+.hero__title {
+    font-size: clamp(2rem, 4.4vw, 3.2rem);
+    font-weight: 700;
+    line-height: 1.15;
+    margin-bottom: 18px;
+}
+
+.hero__desc {
+    font-size: 1.05rem;
+    color: var(--color-muted);
+    margin-bottom: 24px;
+    max-width: 46ch;
+}
+
+.hero__actions { display: flex; flex-wrap: wrap; gap: 15px; margin-bottom: 24px; }
+
+.btn {
+    display: inline-block;
+    padding: 12px 24px;
+    border-radius: 15px;
+    background: var(--color-surface);
+    color: var(--color-text);
+    font-family: var(--mono);
+    font-size: .9rem;
+    text-decoration: none;
+    transition: all .3s;
+}
+
+.btn:hover { background: #ffffff40; transform: translateY(-2px); }
+
+.btn--primary {
+    background-image: linear-gradient(90deg, var(--color-primary) 0%, var(--color-secondary) 100%);
+    color: #08080e;
+    font-weight: 700;
+}
+
+.btn--primary:hover { box-shadow: 0 0 18px #00eeff66; }
+
+.hero__meta {
+    list-style: none;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px 22px;
+    font-family: var(--mono);
+    font-size: .8rem;
+    color: var(--color-muted);
+}
+
+.hero__meta b { color: var(--color-primary); font-weight: 700; }
+
+/* ---- окно терминала ---- */
+.terminal { padding: 0; overflow: hidden; font-family: var(--mono); }
+
+.terminal__bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 16px;
+    border-bottom: 1px solid #ffffff1a;
+    background: #ffffff0d;
+}
+
+.terminal__dot { width: 11px; height: 11px; border-radius: 50%; }
+.terminal__dot--red { background: var(--danger); }
+.terminal__dot--yellow { background: var(--warn); }
+.terminal__dot--green { background: var(--ok); }
+
+.terminal__name { margin-left: 8px; font-size: .75rem; color: var(--color-muted); }
+
+.terminal__body {
+    padding: 18px 16px 20px;
+    min-height: 236px;
+    font-size: .84rem;
+    line-height: 1.75;
+    word-break: break-word;
+}
+
+.terminal__body .cmd { color: var(--color-text); }
+.terminal__body .prompt { color: var(--matrix); }
+.terminal__body .out { color: var(--color-muted); white-space: pre-wrap; }
+.terminal__body .hl { color: var(--color-primary); }
+
+.type-cursor {
+    display: inline-block;
+    width: 8px;
+    height: 1em;
+    background: var(--matrix);
+    vertical-align: -2px;
+    animation: blink 1s steps(1) infinite;
+}
+
+/* ============================================================
+   СЕКЦИИ
+   ============================================================ */
+.section {
+    padding: 25px;
+    scroll-margin-top: 160px;
+    transition: border-color .3s, box-shadow .3s, transform .3s;
+}
+
+.section:hover {
+    border-color: #ffffff40;
+    box-shadow: 0 0 22px #00eeff1f;
+}
+
+.section__head {
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+    flex-wrap: wrap;
+    margin-bottom: 8px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid #ffffff1a;
+}
+
+.section__num {
+    font-family: var(--mono);
+    font-size: .8rem;
+    color: var(--color-secondary);
+}
+
+.section__title { font-size: clamp(1.3rem, 2.6vw, 1.7rem); font-weight: 700; }
+
+.section__body { padding-top: 18px; }
+
+.section__intro { color: var(--color-muted); margin-bottom: 20px; max-width: 80ch; }
+
+/* ============================================================
+    КОНТЕНТ ПО ДИСТРИБУТИВАМ
+   ============================================================ */
+.distro-content { display: none; }
+.distro-content.active { display: block; animation: fade .35s ease; }
+
+@keyframes fade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+/* ============================================================
+   ШАГИ
+   ============================================================ */
+.steps { display: flex; flex-direction: column; gap: 18px; }
+
+.step {
+    display: grid;
+    grid-template-columns: 46px minmax(0, 1fr);
+    gap: 16px;
+    padding: 18px;
+    border-radius: var(--radius);
+    background: #ffffff0d;
+    box-shadow: 0 0 5px var(--glass-shadow);
+    transition: background .3s, transform .3s;
+}
+
+.step:hover { background: #ffffff17; transform: translateX(4px); }
+
+.step-num {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 46px;
+    height: 46px;
+    border-radius: 15px;
+    background-image: linear-gradient(90deg, var(--color-primary) 0%, var(--color-secondary) 100%);
+    color: #08080e;
+    font-family: var(--mono);
+    font-size: 1.15rem;
+    font-weight: 700;
+}
+
+.step-body h3 { font-size: 1.05rem; margin-bottom: 8px; }
+.step-body p { color: var(--color-muted); margin-bottom: 10px; }
+
+/* ============================================================
+   БЛОКИ КОДА
+   ============================================================ */
+.code-block {
+    position: relative;
+    margin: 12px 0;
+    border: 1px solid #ffffff1a;
+    border-radius: 15px;
+    background: #000000a6;
+    overflow-x: auto;
+}
+
+.code-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 14px;
+    border-bottom: 1px solid #ffffff1a;
+    background: #ffffff0d;
+    font-family: var(--mono);
+    font-size: .74rem;
+    color: var(--color-muted);
+}
+
+.copy-btn {
+    flex-shrink: 0;
+    padding: 4px 12px;
+    border: 1px solid var(--glass-border);
+    border-radius: 15px;
+    background: var(--color-surface);
+    color: var(--color-text);
+    font-family: var(--mono);
+    font-size: .72rem;
+    cursor: pointer;
+    transition: all .3s;
+}
+
+.copy-btn:hover { background: var(--color-primary); color: #08080e; border-color: var(--color-primary); }
+
+.code-block pre {
+    padding: 14px 16px;
+    font-family: var(--mono);
+    font-size: .85rem;
+    line-height: 1.7;
+    color: var(--matrix);
+    white-space: pre;
+}
+
+.code-block code { font: inherit; color: inherit; }
+
+/* ============================================================
+   ПОДСКАЗКИ / ТАБЛИЦЫ
+   ============================================================ */
+.tip {
+    margin: 14px 0;
+    padding: 14px 16px;
+    border-left: 3px solid var(--color-primary);
+    border-radius: 0 15px 15px 0;
+    background: #00eeff14;
+    color: var(--color-text);
+    font-size: .95rem;
+}
+
+.tip--warn { border-left-color: var(--warn); background: #ffbd2e14; }
+.tip--ok { border-left-color: var(--ok); background: #27c93f14; }
+
+.tip-label {
+    display: block;
+    margin-bottom: 4px;
+    font-family: var(--mono);
+    font-size: .74rem;
+    letter-spacing: .5px;
+    text-transform: uppercase;
+    color: var(--color-primary);
+}
+
+.tip--warn .tip-label { color: var(--warn); }
+.tip--ok .tip-label { color: var(--ok); }
+
+.table-wrap { overflow-x: auto; border: 1px solid #ffffff1a; border-radius: var(--radius); }
+
+table { width: 100%; border-collapse: collapse; font-size: .9rem; }
+
+th {
+    padding: 12px 14px;
+    background: #ffffff1a;
+    color: var(--color-primary);
+    font-family: var(--mono);
+    font-size: .78rem;
+    text-transform: uppercase;
+    letter-spacing: .5px;
+    text-align: left;
+}
+
+td { padding: 12px 14px; border-top: 1px solid #ffffff0d; color: var(--color-muted); }
+td:first-child { color: var(--color-text); font-weight: 600; }
+tr:hover td { background: #ffffff08; }
+
+/* ============================================================
+   ССЫЛКА-ТЕРМИН С ВСПЛЫВАЮЩЕЙ ПОДСКАЗКОЙ
+   ============================================================ */
+.term {
+    position: relative;
+    color: var(--color-primary);
+    font-weight: 600;
+    text-decoration: none;
+    border-bottom: 1px dashed #00eeff80;
+    cursor: help;
+    white-space: nowrap;
+    transition: color .2s, border-color .2s;
+}
+
+.term:hover, .term:focus-visible, .term.active {
+    color: #fff;
+    border-bottom-color: #fff;
+    outline: none;
+}
+
+.term-pop {
+    position: absolute;
+    left: 50%;
+    bottom: calc(100% + 12px);
+    z-index: 70;
+    width: min(320px, 76vw);
+    padding: 12px 14px;
+    border-radius: 15px;
+    background-color: #12121af2;
+    border-style: inset;
+    border-width: 2px 2px 1px 1px;
+    border-color: var(--glass-border);
+    box-shadow: 0 0 12px var(--glass-shadow);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    color: var(--color-text);
+    font-family: var(--font-body, inherit);
+    font-size: .84rem;
+    font-weight: 400;
+    line-height: 1.5;
+    text-align: left;
+    white-space: normal;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transform: translate(-50%, 6px);
+    transition: opacity .22s, transform .22s, visibility .22s;
+}
+
+.term-pop::after {
+    content: "";
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 7px solid transparent;
+    border-top-color: #12121a;
+}
+
+.term-pop b { color: var(--color-primary); display: block; margin-bottom: 3px; font-family: var(--mono); }
+
+.term-pop a { color: var(--color-secondary); }
+
+.term:hover .term-pop,
+.term:focus-visible .term-pop,
+.term.active .term-pop {
+    opacity: 1;
+    visibility: visible;
+    transform: translate(-50%, 0);
+}
+
+/* ============================================================
+   СЛОВАРЬ
+   ============================================================ */
+.glossary { display: flex; flex-direction: column; gap: 14px; }
+
+.glossary-card {
+    padding: 16px 18px;
+    border-radius: var(--radius);
+    background: #ffffff0d;
+    border-left: 3px solid var(--color-secondary);
+    scroll-margin-top: 170px;
+    transition: background .3s, border-color .3s;
+}
+
+.glossary-card:hover { background: #ffffff17; border-left-color: var(--color-primary); }
+
+.glossary-card:target {
+    background: #00eeff1f;
+    border-left-color: var(--color-primary);
+    box-shadow: 0 0 16px #00eeff33;
+}
+
+.glossary-card dt {
+    margin-bottom: 6px;
+    font-family: var(--mono);
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--color-primary);
+}
+
+.glossary-card dd { margin: 0; color: var(--color-muted); }
+
+/* ============================================================
+   КНОПКА «НАВЕРХ»
+   ============================================================ */
+.to-top {
+    position: fixed;
+    right: 20px;
+    bottom: 20px;
+    z-index: 110;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 50px;
+    height: 50px;
+    border: 0;
+    border-radius: 50%;
+    background-color: var(--glass-bg);
+    color: var(--color-text);
+    font-family: var(--mono);
+    font-size: 1.1rem;
+    cursor: pointer;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    box-shadow: 0 0 5px var(--glass-shadow);
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(12px);
+    transition: all .3s;
+}
+
+.to-top.visible { opacity: 1; visibility: visible; transform: translateY(0); }
+.to-top:hover { background-image: linear-gradient(90deg, var(--color-primary) 0%, var(--color-secondary) 100%); color: #08080e; }
+
+/* ============================================================
+   ГЛОБАЛЬНЫЙ ПЕРЕКЛЮЧАТЕЛЬ ДИСТРИБУТИВА
+   ============================================================ */
+.distro-bar {
+    position: sticky;
+    top: 82px;
+    z-index: 95;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-wrap: wrap;
+    padding: 12px 16px;
+    background-color: #12121ae6;
+    border-style: inset;
+    border-width: 2px 2px 1px 1px;
+    border-color: var(--glass-border);
+    border-radius: var(--radius);
+    box-shadow: 0 0 5px var(--glass-shadow);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+}
+
+.distro-bar__label {
+    font-family: var(--mono);
+    font-size: .78rem;
+    color: var(--color-muted);
+    text-transform: uppercase;
+    letter-spacing: .5px;
+}
+
+.distro-switch { display: flex; flex-wrap: wrap; gap: 8px; }
+
+.distro-switch__btn {
+    padding: 8px 16px;
+    border: 1px solid var(--glass-border);
+    border-radius: 35px;
+    background: var(--color-surface);
+    color: var(--color-text);
+    font-family: var(--mono);
+    font-size: .85rem;
+    cursor: pointer;
+    transition: all .25s;
+}
+
+.distro-switch__btn:hover { background: #ffffff40; }
+
+.distro-switch__btn.active {
+    background-image: linear-gradient(90deg, var(--color-primary) 0%, var(--color-secondary) 100%);
+    border-color: transparent;
+    color: #08080e;
+    font-weight: 700;
+}
+
+.distro-bar__hint {
+    margin-left: auto;
+    font-family: var(--mono);
+    font-size: .74rem;
+    color: var(--color-muted);
+}
+
+.distro-bar__hint b { color: var(--color-primary); }
+
+/* ============================================================
+   ШПАРГАЛКА КОМАНД
+   ============================================================ */
+.cheat-table { min-width: 760px; }
+
+.cheat-table td code,
+.cheat-table td .cmd-cell {
+    display: inline-block;
+    padding: 3px 8px;
+    border-radius: 8px;
+    background: #000000a6;
+    color: var(--matrix);
+    font-family: var(--mono);
+    font-size: .8rem;
+    cursor: copy;
+    transition: background .2s, color .2s;
+}
+
+.cheat-table td code:hover,
+.cheat-table td .cmd-cell:hover { background: var(--color-primary); color: #08080e; }
+.cheat-table td code.copied,
+.cheat-table td .cmd-cell.copied { background: var(--ok); color: #08080e; }
+
+.cheat-table td .muted-note { color: var(--color-muted); font-size: .8rem; font-style: italic; }
+
+.cheat-legend { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 16px; }
+
+.cheat-badge {
+    font-family: var(--mono);
+    font-size: .74rem;
+    padding: 4px 12px;
+    border-radius: 35px;
+    background: var(--color-surface);
+    color: var(--color-text);
+}
+
+.cheat-badge b { color: var(--color-primary); }
+
+.cheat-note { margin-top: 16px; color: var(--color-muted); font-size: .88rem; max-width: 90ch; }
+
+/* ============================================================
+   АДАПТИВ
+   ============================================================ */
+@media (max-width: 900px) {
+    .hero__grid { grid-template-columns: 1fr; }
+    .terminal__body { min-height: 200px; }
+}
+
+@media (max-width: 768px) {
+    body { padding: 15px; }
+    main { padding-top: 90px; }
+    .hero, .section { padding: 18px; }
+}
+
+@media (max-width: 640px) {
+    .burger { display: flex; }
+
+    .distro-bar { top: 74px; }
+    .distro-bar__hint { display: none; }
+
+    .nav {
+        position: absolute;
+        top: calc(100% + 10px);
+        left: 0;
+        right: 0;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0;
+        max-height: 0;
+        overflow: hidden;
+        border-radius: 20px;
+        background-color: #12121af2;
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        transition: max-height .4s ease;
+    }
+
+    .nav.open { max-height: 340px; padding: 8px; }
+    .nav-link { padding: 12px 16px; border-radius: 15px; }
+    .nav-link::after { display: none; }
+    .nav-link:hover, .nav-link.active { background: var(--color-surface); }
+
+    .step { grid-template-columns: 1fr; }
+    .step-num { width: 40px; height: 40px; font-size: 1rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: .01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: .01ms !important;
+    }
+    html { scroll-behavior: auto; }
+}
+</style>
+</head>
+<body>
+
+<!-- ФОН -->
+<div class="orbs" aria-hidden="true">
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+    <div class="orb orb-4"></div>
+</div>
+<canvas id="matrix" aria-hidden="true"></canvas>
+<div class="scanlines" aria-hidden="true"></div>
+
+<!-- ШАПКА -->
+<header class="site-header" id="site-header">
+    <a href="#top" class="logo gradient-text">training@linux<span class="cursor" aria-hidden="true"></span></a>
+    <nav class="nav" id="nav">
+    <a href="#install" class="nav-link">Установка</a>
+    <a href="#update" class="nav-link">Обновление</a>
+    <a href="#install-app" class="nav-link">Программы</a>
+    <a href="#remove-app" class="nav-link">Удаление</a>
+    <a href="#cheatsheet" class="nav-link">Шпаргалка</a>
+    <a href="#glossary" class="nav-link">Словарь</a>
+    </nav>
+    <button class="burger" id="burger" aria-label="Меню" aria-expanded="false" aria-controls="nav">
+        <span class="burger-line"></span>
+        <span class="burger-line"></span>
+        <span class="burger-line"></span>
+    </button>
+</header>
+
+<main id="top">
+
+    <!-- ГЛОБАЛЬНЫЙ ПЕРЕКЛЮЧАТЕЛЬ ДИСТРИБУТИВА -->
+    <div class="distro-bar" role="group" aria-label="Выбор дистрибутива">
+        <span class="distro-bar__label">дистрибутив:</span>
+        <div class="distro-switch" id="distro-switch" role="tablist">
+            <button class="distro-switch__btn active" role="tab" aria-selected="true"  data-distro="ubuntu"  onclick="setDistro('ubuntu')">Ubuntu</button>
+            <button class="distro-switch__btn"        role="tab" aria-selected="false" data-distro="arch"    onclick="setDistro('arch')">Arch Linux</button>
+            <button class="distro-switch__btn"        role="tab" aria-selected="false" data-distro="astra"   onclick="setDistro('astra')">Astra Linux</button>
+            <button class="distro-switch__btn"        role="tab" aria-selected="false" data-distro="redos"   onclick="setDistro('redos')">RED OS</button>
+        </div>
+        <span class="distro-bar__hint">выбран: <b id="hero-distro-label">ubuntu</b></span>
+    </div>
+
+    <!-- HERO -->
+    <section class="hero glass">
+        <p class="hero__status"><span class="pulse-dot" aria-hidden="true"></span> система готова · ubuntu · arch · astra · red os</p>
+
+        <div class="hero__grid">
+            <div>
+                <h1 class="hero__title"><span class="gradient-text">Linux</span> с нуля до уверенного пользователя</h1>
+                <p class="hero__desc">Практическое руководство: как поставить систему, держать её обновлённой, устанавливать нужное и убирать лишнее. Плюс шпаргалка команд для Ubuntu, Arch, Astra Linux и RED OS.</p>
+
+                <div class="hero__actions">
+                    <a href="#install" class="btn btn--primary">[ начать установку ]</a>
+                    <a href="#cheatsheet" class="btn">[ шпаргалка команд ]</a>
+                </div>
+
+                <ul class="hero__meta">
+                    <li>разделов: <b>06</b></li>
+                    <li>дистрибутивов: <b>04</b></li>
+
+                    <li>время: <b>~40 мин</b></li>
+                </ul>
+            </div>
+
+            <!-- ТЕРМИНАЛ -->
+            <div class="terminal glass" aria-hidden="true">
+                <div class="terminal__bar">
+                    <span class="terminal__dot terminal__dot--red"></span>
+                    <span class="terminal__dot terminal__dot--yellow"></span>
+                    <span class="terminal__dot terminal__dot--green"></span>
+                    <span class="terminal__name">user@linux-guide: ~</span>
+                </div>
+                <div class="terminal__body" id="term-out"></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============ 1. УСТАНОВКА ============ -->
+    <section class="section glass" id="install">
+        <div class="section__head">
+            <span class="section__num">[01]</span>
+            <h2 class="section__title">Установка Linux</h2>
+        </div>
+        <div class="section__body">
+            <p class="section__intro">Выберите ваш вариант установки. Если не уверены — начните с виртуальной машины: это безопасно и ничего не сломает.</p>
+
+            <!-- Ubuntu -->
+            <div class="distro-content active" id="install-ubuntu">
+                <div class="steps">
+                    <div class="step">
+                        <div class="step-num">1</div>
+                        <div class="step-body">
+                            <h3>Скачайте ISO-образ</h3>
+                            <p>Перейдите на официальный сайт Ubuntu и скачайте последнюю LTS-версию (Long Term Support — долгосрочная поддержка).</p>
+                            <div class="code-block">
+                                <div class="code-header"><span>ссылка</span><button class="copy-btn" onclick="copyCode(this)">[ copy ]</button></div>
+                                <pre><code>https://ubuntu.com/download/desktop</code></pre>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="step">
+                        <div class="step-num">2</div>
+                        <div class="step-body">
+                            <h3>Создайте загрузочную флешку</h3>
+                            <p>Возьмите флешку от 4 ГБ и запишите на неё ISO-образ с помощью Balena Etcher (Windows / macOS / Linux) или Rufus (Windows).</p>
+                            <div class="tip">💡 <span class="tip-label">Программа записи</span>
+                                Balena Etcher — <code style="color:var(--color-primary)">https://etcher.balena.io</code>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="step">
+                        <div class="step-num">3</div>
+                        <div class="step-body">
+                            <h3>Загрузитесь с флешки</h3>
+                            <p>Вставьте флешку, включите компьютер и войдите в Boot Menu. Обычно это клавиши <kbd>F12</kbd>, <kbd>F8</kbd>, <kbd>F10</kbd> или <kbd>Esc</kbd> при включении.</p>
+                            <p>Выберите пункт «Try or Install Ubuntu».</p>
+                        </div>
+                    </div>
+
+                    <div class="step">
+                        <div class="step-num">4</div>
+                        <div class="step-body">
+                            <h3>Установите систему</h3>
+                            <p>Запустится установщик. Выберите язык → «Установить Ubuntu рядом» (если хотите оставить Windows) или «Стереть диск и установить Ubuntu».</p>
+                            <p>Создайте имя пользователя и пароль — они понадобятся для входа и команд <code style="color:var(--color-primary)">sudo</code>.</p>
+                        </div>
+                    </div>
+
+                    <div class="step">
+                        <div class="step-num">5</div>
+                        <div class="step-body">
+                            <h3>Первая команда после установки</h3>
+                            <p>После перезагрузки откройте терминал (<kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>T</kbd>) и обновите систему.</p>
+                            <div class="code-block">
+                                <div class="code-header"><span>ubuntu / debian</span><button class="copy-btn" onclick="copyCode(this)">[ copy ]</button></div>
+                                <pre><code>sudo apt update && sudo apt upgrade -y</code></pre>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Arch -->
+            <div class="distro-content" id="install-arch">
+                <div class="steps">
+                    <div class="step">
+                        <div class="step-num">1</div>
+                        <div class="step-body">
+                            <h3>Скачайте Arch ISO</h3>
+                            <p>Arch — система «собери сам»: вы получаете минимум и добавляете только то, что нужно именно вам.</p>
+                            <div class="code-block">
+                                <div class="code-header"><span>ссылка</span><button class="copy-btn" onclick="copyCode(this)">[ copy ]</button></div>
+                                <pre><code>https://archlinux.org/download/</code></pre>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="step">
+                        <div class="step-num">2</div>
+                        <div class="step-body">
+                            <h3>Проверьте загрузку (UEFI)</h3>
+                            <p>Убедитесь, что загрузились в UEFI-режиме — если команда вернёт пустую строку, система загрузилась в Legacy/BIOS.</p>
+                            <div class="code-block">
+                                <div class="code-header"><span>проверка</span><button class="copy-btn" onclick="copyCode(this)">[ copy ]</button></div>
+                                <pre><code>ls /sys/firmware/efi/efivars</code></pre>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="step">
+                        <div class="step-num">3</div>
+                        <div class="step-body">
+                            <h3>Настройте интернет</h3>
+                            <p>Для проводного соединения обычно ничего делать не нужно. Для Wi-Fi используйте <code style="color:var(--color-primary)">iwctl</code>.</p>
+                            <div class="code-block">
+                                <div class="code-header"><span>wi-fi через iwctl</span><button class="copy-btn" onclick="copyCode(this)">[ copy ]</button></div>
+                                <pre><code>iwctl
+[iwd]# station wlan0 scan
+[iwd]# station wlan0 get-networks
+[iwd]# station wlan0 connect "Имя_сети"
+[iwd]# exit</code></pre>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="step">
+                        <div class="step-num">4</div>
+                        <div class="step-body">
+                            <h3>Разметьте диски</h3>
+                            <p>Посмотрите названия дисков, затем создайте разделы в <code style="color:var(--color-primary)">cfdisk</code> или <code style="color:var(--color-primary)">fdisk</code>.</p>
+                            <div class="code-block">
+                                <div class="code-header"><span>разметка</span><button class="copy-btn" onclick="copyCode(this)">[ copy ]</button></div>
+                                <pre><code>lsblk
+cfdisk /dev/sda</code></pre>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="step">
+                        <div class="step-num">5</div>
+                        <div class="step-body">
+                            <h3>Отформатируйте и смонтируйте разделы</h3>
+                            <p>Ниже — базовый вариант для одного раздела ext4. Замените <code style="color:var(--color-primary)">/dev/sdaX</code> на свой номер раздела.</p>
+                            <div class="code-block">
+                                <div class="code-header"><span>форматирование</span><button class="copy-btn" onclick="copyCode(this)">[ copy ]</button></div>
+                                <pre><code>mkfs.ext4 /dev/sda2
+mount /dev/sda2 /mnt</code></pre>
+                            </div>
+                            <p>Если у вас UEFI — отдельно создайте и смонтируйте EFI-раздел:</p>
+                            <div class="code-block">
+                                <div class="code-header"><span>efi раздел</span><button class="copy-btn" onclick="copyCode(this)">[ copy ]</button></div>
+                                <pre><code>mkfs.fat -F32 /dev/sda1
+mkdir -p /mnt/boot
+mount --mkdir /dev/sda1 /mnt/boot</code></pre>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="step">
+                        <div class="step-num">6</div>
+                        <div class="step-body">
+                            <h3>Установите базовую систему</h3>
+                            <p>Установка ядра, базовых утилит и скрипта инициализации. Пакет <code style="color:var(--color-primary)">linux-firmware</code> нужен для драйверов железа.</p>
+                            <div class="code-block">
+                                <div class="code-header"><span>базовая система</span><button class="copy-btn" onclick="copyCode(this)">[ copy ]</button></div>
+                                <pre><code>pacstrap /mnt base linux linux-firmware nano</code></pre>
+                            </div>
+                            <div class="tip">💡 <span class="tip-label">Что за пакеты</span>
+                                <a href="#term-package" class="term" data-term="package">Пакет</a> — это упакованная программа со всеми файлами и списком того, что ей нужно для работы.
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="step">
+                        <div class="step-num">7</div>
+                        <div class="step-body">
+                            <h3>Сгенерируйте fstab</h3>
+                            <p>Файл <code style="color:var(--color-primary)">/etc/fstab</code> говорит системе, какие разделы монтировать при загрузке.</p>
+                            <div class="code-block">
+                                <div class="code-header"><span>fstab</span><button class="copy-btn" onclick="copyCode(this)">[ copy ]</button></div>
+                                <pre><code>genfstab -U /mnt >> /mnt/etc/fstab</code></pre>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="step">
+                        <div class="step-num">8</div>
+                        <div class="step-body">
+                            <h3>Зайдите в новую систему</h3>
+                            <p><code style="color:var(--color-primary)">arch-chroot</code> позволяет работать внутри установленной системы из live-окружения.</p>
+                            <div class="code-block">
+                                <div class="code-header"><span>chroot</span><button class="copy-btn" onclick="copyCode(this)">[ copy ]</button></div>
+                                <pre><code>arch-chroot /mnt</code></pre>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="step">
+                        <div class="step-num">9</div>
+                        <div class="step-body">
+                            <h3>Настройте время, язык, locale</h3>
+                            <div class="code-block">
+                                <div class="code-header"><span>locale</span><button class="copy-btn" onclick="copyCode(this)">[ copy ]</button></div>
+                                <pre><code>ln -sf /usr/share/zoneinfo/Europe/Moscow /etc/localtime
+hwclock --systohc
+
+# Раскомментируйте en_US.UTF-8 и ru_RU.UTF-8 в /etc/locale.gen
+nano /etc/locale.gen
+locale-gen
+echo "LANG=en_US.UTF-8" > /etc/locale.conf</code></pre>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="step">
+                        <div class="step-num">10</div>
+                        <div class="step-body">
+                            <h3>Задайте пароль root и hostname</h3>
+                            <div class="code-block">
+                                <div class="code-header"><span>root</span><button class="copy-btn" onclick="copyCode(this)">[ copy ]</button></div>
+                                <pre><code>echo "myarch" > /etc/hostname
+passwd</code></pre>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="step">
+                        <div class="step-num">11</div>
+                        <div class="step-body">
+                            <h3>Создайте пользователя</h3>
+                            <p>Группы <code style="color:var(--color-primary)">wheel</code> дают право на <code style="color:var(--color-primary)">sudo</code> (нужно будет разрешить в <code style="color:var(--color-primary)">sudoers</code>).</p>
+                            <div class="code-block">
+                                <div class="code-header"><span>пользователь</span><button class="copy-btn" onclick="copyCode(this)">[ copy ]</button></div>
+                                <pre><code>useradd -m -G wheel -s /bin/bash myuser
+passwd myuser</code></pre>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="step">
+                        <div class="step-num">12</div>
+                        <div class="step-body">
+                            <h3>Установите загрузчик</h3>
+                            <p>Для UEFI — <code style="color:var(--color-primary)">grub</code>:</p>
+                            <div class="code-block">
+                                <div class="code-header"><span>grub / uefi</span><button class="copy-btn" onclick="copyCode(this)">[ copy ]</button></div>
+                                <pre><code>pacman -S grub efibootmgr os-prober
+mkdir -p /boot/efi
+mount --mkdir /dev/sda1 /boot/efi
+grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=GRUB
+grub-mkconfig -o /boot/grub/grub.cfg</code></pre>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="step">
+                        <div class="step-num">13</div>
+                        <div class="step-body">
+                            <h3>Перезагрузка</h3>
+                            <div class="code-block">
+                                <div class="code-header"><span>готово</span><button class="copy-btn" onclick="copyCode(this)">[ copy ]</button></div>
+                                <pre><code>exit
+umount -R /mnt
+reboot</code></pre>
+                            </div>
+                            <p>Поздравляем — у вас чистый Arch Linux!</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Astra Linux -->
+            <div class="distro-content" id="install-astra">
+                <div class="steps">
+                    <div class="step">
+                        <div class="step-num">1</div>
+                        <div class="step-body">
+                            <h3>Скачайте образ Astra Linux</h3>
+                            <p>Astra Linux — российский дистрибутив на базе Debian. Скачайте образ с официального сайта. Special Edition требует регистрацию, Common Edition (Орёл) доступен свободно.</p>
+                            <div class="code-block">
+                                <div class="code-header"><span>ссылка</span><button class="copy-btn" onclick="copyCode(this)">[ copy ]</button></div>
+                                <pre><code>https://astra-linux.github.io</code></pre>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="step">
+                        <div class="step-num">2</div>
+                        <div class="step-body">
+                            <h3>Создайте загрузочную флешку</h3>
+                            <p>Используйте Balena Etcher или Rufus — как для Ubuntu. Образ ISO, флешка от 4 ГБ.</p>
+                        </div>
+                    </div>
+
+                    <div class="step">
+                        <div class="step-num">3</div>
+                        <div class="step-body">
+                            <h3>Загрузитесь с флешки</h3>
+                            <p>Вставьте флешку, войдите в Boot Menu (F12 / F8 / Esc) и выберите «Try or Install Astra Linux».</p>
+                        </div>
+                    </div>
+
+                    <div class="step">
+                        <div class="step-num">4</div>
+                        <div class="step-body">
+                            <h3>Установите систему</h3>
+                            <p>Запустится установщик. Выберите язык, раздел диска, создайте пользователя. При установке Special Edition предложит уровень безопасности (Parsec) — выберите требуемый.</p>
+                        </div>
+                    </div>
+
+                    <div class="step">
+                        <div class="step-num">5</div>
+                        <div class="step-body">
+                            <h3>Первая команда после установки</h3>
+                            <p>После перезагрузки откройте терминал (<kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>T</kbd>) и обновите систему.</p>
+                            <div class="code-block">
+                                <div class="code-header"><span>astra linux</span><button class="copy-btn" onclick="copyCode(this)">[ copy ]</button></div>
+                                <pre><code>sudo apt update && sudo apt full-upgrade -y</code></pre>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- RED OS -->
+            <div class="distro-content" id="install-redos">
+                <div class="steps">
+                    <div class="step">
+                        <div class="step-num">1</div>
+                        <div class="step-body">
+                            <h3>Скачайте образ RED OS</h3>
+                            <p>RED OS — российский дистрибутив на базе RPM (как RHEL/Fedora). Скачайте образ с официального сайта.</p>
+                            <div class="code-block">
+                                <div class="code-header"><span>ссылка</span><button class="copy-btn" onclick="copyCode(this)">[ copy ]</button></div>
+                                <pre><code>https://red-soft.ru/download/redos/</code></pre>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="step">
+                        <div class="step-num">2</div>
+                        <div class="step-body">
+                            <h3>Создайте загрузочную флешку</h3>
+                            <p>Используйте Balena Etcher, Rufus или dd: <code style="color:var(--color-primary)">dd if=redos.iso of=/dev/sdX status=progress</code>.</p>
+                        </div>
+                    </div>
+
+                    <div class="step">
+                        <div class="step-num">3</div>
+                        <div class="step-body">
+                            <h3>Загрузитесь с флешки</h3>
+                            <p>Вставьте флешку, войдите в Boot Menu и выберите «Install RED OS».</p>
+                        </div>
+                    </div>
+
+                    <div class="step">
+                        <div class="step-num">4</div>
+                        <div class="step-body">
+                            <h3>Установите систему</h3>
+                            <p>Запустится графический установщик Anaconda (как в Fedora/RHEL). Выберите язык, раздел диска, создайте пользователя. Укажите тип установки — базовая или рабочая станция.</p>
+                        </div>
+                    </div>
+
+                    <div class="step">
+                        <div class="step-num">5</div>
+                        <div class="step-body">
+                            <h3>Первая команда после установки</h3>
+                            <p>После перезагрузки откройте терминал и обновите систему.</p>
+                            <div class="code-block">
+                                <div class="code-header"><span>red os</span><button class="copy-btn" onclick="copyCode(this)">[ copy ]</button></div>
+                                <pre><code>sudo dnf upgrade --refresh -y</code></pre>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============ 2. ОБНОВЛЕНИЕ ============ -->
+    <section class="section glass" id="update">
+        <div class="section__head">
+            <span class="section__num">[02]</span>
+            <h2 class="section__title">Обновление системы</h2>
+        </div>
+        <div class="section__body">
+            <p class="section__intro">Регулярно обновляйте систему — это безопасность и стабильность.</p>
+
+            <div class="distro-content active" id="update-ubuntu">
+                <div class="steps">
+                    <div class="step">
+                        <div class="step-num">1</div>
+                        <div class="step-body">
+                            <h3>Обновите списки <a href="#term-package" class="term" data-term="package">пакетов</a></h3>
+                            <p>Команда загружает актуальные версии репозиториев, но ещё ничего не ставит.</p>
+                            <div class="code-block">
+                                <div class="code-header"><span>ubuntu / debian</span><button class="copy-btn" onclick="copyCode(this)">[ copy ]</button></div>
+                                <pre><code>sudo apt update</code></pre>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="step">
+                        <div class="step-num">2</div>
+                        <div class="step-body">
+                            <h3>Обновите все пакеты</h3>
+                            <div class="code-block">
+                                <div class="code-header"><span>ubuntu / debian</span><button class="copy-btn" onclick="copyCode(this)">[ copy ]</button></div>
+                                <pre><code>sudo apt upgrade</code></pre>
+                            </div>
+                            <div class="tip tip--ok">✔ <span class="tip-label">Всё автоматически</span>
+                                Флаг <code style="color:var(--color-primary)">-y</code> ответит «да» на все вопросы:
+                                <code style="color:var(--color-primary)">sudo apt upgrade -y</code>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="step">
+                        <div class="step-num">3</div>
+                        <div class="step-body">
+                            <h3>Полное обновление (опционально)</h3>
+                            <p>Обновляет все пакеты, включая те, для которых нужно удалить другие или поставить новые зависимости.</p>
+                            <div class="code-block">
+                                <div class="code-header"><span>ubuntu / debian</span><button class="copy-btn" onclick="copyCode(this)">[ copy ]</button></div>
+                                <pre><code>sudo apt full-upgrade</code></pre>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="step">
+                        <div class="step-num">4</div>
+                        <div class="step-body">
+                            <h3>Уберите <a href="#term-unneeded" class="term" data-term="unneeded">ненужные пакеты</a></h3>
+                            <p>Удаляет зависимости, которые больше не нужны ни одной программе.</p>
+                            <div class="code-block">
+                                <div class="code-header"><span>ubuntu / debian</span><button class="copy-btn" onclick="copyCode(this)">[ copy ]</button></div>
+                                <pre><code>sudo apt autoremove</code></pre>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="distro-content" id="update-arch">
+                <div class="steps">
+                    <div class="step">
+                        <div class="step-num">1</div>
+                        <div class="step-body">
+                            <h3>Полное обновление системы</h3>
+                            <p>В Arch обновление — одна команда. Она обновляет и сами <a href="#term-package" class="term" data-term="package">пакеты</a>, и метаданные <a href="#term-package-manager" class="term" data-term="manager">менеджера пакетов</a>.</p>
+                            <div class="code-block">
+                                <div class="code-header"><span>arch linux</span><button class="copy-btn" onclick="copyCode(this)">[ copy ]</button></div>
+                                <pre><code>sudo pacman -Syu</code></pre>
+                            </div>
+                            <div class="tip tip--warn">⚠ <span class="tip-label">Важно</span>
+                                Не используйте <code style="color:var(--color-primary)">pacman -Sy</code> без <code style="color:var(--color-primary)">u</code> — это приведёт к «partial upgrade» и поломке системы.
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="step">
+                        <div class="step-num">2</div>
+                        <div class="step-body">
+                            <h3>Обновите AUR-пакеты (если пользуетесь)</h3>
+                            <p>AUR — репозиторий пакетов от сообщества. Обычно ставят <code style="color:var(--color-primary)">yay</code> или <code style="color:var(--color-primary)">paru</code>.</p>
+                            <div class="code-block">
+                                <div class="code-header"><span>aur</span><button class="copy-btn" onclick="copyCode(this)">[ copy ]</button></div>
+                                <pre><code>yay -Syu</code></pre>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="step">
+                        <div class="step-num">3</div>
+                        <div class="step-body">
+                            <h3>Очистите кэш пакетов</h3>
+                            <p>Удаляет скачанные архивы установленных программ из кэша.</p>
+                            <div class="code-block">
+                                <div class="code-header"><span>arch linux</span><button class="copy-btn" onclick="copyCode(this)">[ copy ]</button></div>
+                                <pre><code>sudo pacman -Sc</code></pre>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="distro-content" id="update-astra">
+                <div class="steps">
+                    <div class="step">
+                        <div class="step-num">1</div>
+                        <div class="step-body">
+                            <h3>Обновите списки пакетов</h3>
+                            <p>Astra Linux основан на Debian — используется apt.</p>
+                            <div class="code-block">
+                                <div class="code-header"><span>astra linux</span><button class="copy-btn" onclick="copyCode(this)">[ copy ]</button></div>
+                                <pre><code>sudo apt update</code></pre>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="step">
+                        <div class="step-num">2</div>
+                        <div class="step-body">
+                            <h3>Обновите систему</h3>
+                            <div class="code-block">
+                                <div class="code-header"><span>astra linux</span><button class="copy-btn" onclick="copyCode(this)">[ copy ]</button></div>
+                                <pre><code>sudo apt full-upgrade -y</code></pre>
+                            </div>
+                            <div class="tip">💡 <span class="tip-label">Astra vs Ubuntu</span>
+                                В Astra рекомендуется <code style="color:var(--color-primary)">full-upgrade</code> вместо <code style="color:var(--color-primary)">upgrade</code> — он надёжнее обрабатывает замену пакетов.
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="step">
+                        <div class="step-num">3</div>
+                        <div class="step-body">
+                            <h3>Очистите кэш</h3>
+                            <div class="code-block">
+                                <div class="code-header"><span>astra linux</span><button class="copy-btn" onclick="copyCode(this)">[ copy ]</button></div>
+                                <pre><code>sudo apt clean</code></pre>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="distro-content" id="update-redos">
+                <div class="steps">
+                    <div class="step">
+                        <div class="step-num">1</div>
+                        <div class="step-body">
+                            <h3>Полное обновление системы</h3>
+                            <p>RED OS использует dnf — менеджер пакетов на базе RPM.</p>
+                            <div class="code-block">
+                                <div class="code-header"><span>red os</span><button class="copy-btn" onclick="copyCode(this)">[ copy ]</button></div>
+                                <pre><code>sudo dnf upgrade --refresh -y</code></pre>
+                            </div>
+                            <div class="tip tip--warn">⚠ <span class="tip-label">Важно</span>
+                                Всегда используйте <code style="color:var(--color-primary)">--refresh</code> или <code style="color:var(--color-primary)">dnf update</code> — это обновит и метаданные, и пакеты одновременно.
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="step">
+                        <div class="step-num">2</div>
+                        <div class="step-body">
+                            <h3>Очистите кэш</h3>
+                            <div class="code-block">
+                                <div class="code-header"><span>red os</span><button class="copy-btn" onclick="copyCode(this)">[ copy ]</button></div>
+                                <pre><code>sudo dnf clean all</code></pre>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============ 3. УСТАНОВКА ПРОГРАММ ============ -->
+    <section class="section glass" id="install-app">
+        <div class="section__head">
+            <span class="section__num">[03]</span>
+            <h2 class="section__title">Установка программ</h2>
+        </div>
+        <div class="section__body">
+            <div class="distro-content active" id="install-app-ubuntu">
+                <div class="steps">
+                    <div class="step">
+                        <div class="step-num">1</div>
+                        <div class="step-body">
+                            <h3>Найдите нужный <a href="#term-package" class="term" data-term="package">пакет</a></h3>
+                            <div class="code-block">
+                                <div class="code-header"><span>ubuntu / debian</span><button class="copy-btn" onclick="copyCode(this)">[ copy ]</button></div>
+                                <pre><code>apt search название_программы</code></pre>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="step">
+                        <div class="step-num">2</div>
+                        <div class="step-body">
+                            <h3>Посмотрите информацию</h3>
+                            <div class="code-block">
+                                <div class="code-header"><span>ubuntu / debian</span><button class="copy-btn" onclick="copyCode(this)">[ copy ]</button></div>
+                                <pre><code>apt show название_пакета</code></pre>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="step">
+                        <div class="step-num">3</div>
+                        <div class="step-body">
+                            <h3>Установите</h3>
+                            <div class="code-block">
+                                <div class="code-header"><span>ubuntu / debian</span><button class="copy-btn" onclick="copyCode(this)">[ copy ]</button></div>
+                                <pre><code>sudo apt install название_пакета</code></pre>
+                            </div>
+                            <div class="tip">💡 <span class="tip-label">Несколько сразу</span>
+                                Можно ставить сразу несколько <a href="#term-package" class="term" data-term="package">пакетов</a> одной командой:<br>
+                                <code style="color:var(--color-primary)">sudo apt install vlc gimp firefox</code>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="step">
+                        <div class="step-num">4</div>
+                        <div class="step-body">
+                            <h3>Flatpak — свежие версии</h3>
+                            <p>Если программа в репозитории старая — попробуйте Flatpak. Он ставит приложение со всеми зависимостями отдельно от системы.</p>
+                            <div class="code-block">
+                                <div class="code-header"><span>flatpak</span><button class="copy-btn" onclick="copyCode(this)">[ copy ]</button></div>
+                                <pre><code>sudo apt install flatpak
+flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+flatpak install flathub org.videolan.VLC</code></pre>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="step">
+                        <div class="step-num">5</div>
+                        <div class="step-body">
+                            <h3>Снэпы (Ubuntu)</h3>
+                            <div class="code-block">
+                                <div class="code-header"><span>snap</span><button class="copy-btn" onclick="copyCode(this)">[ copy ]</button></div>
+                                <pre><code>sudo snap install spotify</code></pre>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="distro-content" id="install-app-arch">
+                <div class="steps">
+                    <div class="step">
+                        <div class="step-num">1</div>
+                        <div class="step-body">
+                            <h3>Найдите пакет</h3>
+                            <div class="code-block">
+                                <div class="code-header"><span>arch linux</span><button class="copy-btn" onclick="copyCode(this)">[ copy ]</button></div>
+                                <pre><code>pacman -Ss название_программы</code></pre>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="step">
+                        <div class="step-num">2</div>
+                        <div class="step-body">
+                            <h3>Посмотрите информацию</h3>
+                            <div class="code-block">
+                                <div class="code-header"><span>arch linux</span><button class="copy-btn" onclick="copyCode(this)">[ copy ]</button></div>
+                                <pre><code>pacman -Si название_пакета</code></pre>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="step">
+                        <div class="step-num">3</div>
+                        <div class="step-body">
+                            <h3>Установите</h3>
+                            <div class="code-block">
+                                <div class="code-header"><span>arch linux</span><button class="copy-btn" onclick="copyCode(this)">[ copy ]</button></div>
+                                <pre><code>sudo pacman -S название_пакета</code></pre>
+                            </div>
+                            <div class="tip">💡 <span class="tip-label">Группы пакетов</span>
+                                Ставьте сразу набором: <code style="color:var(--color-primary)">sudo pacman -S firefox vlc gimp</code>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="step">
+                        <div class="step-num">4</div>
+                        <div class="step-body">
+                            <h3>Установка из AUR</h3>
+                            <p>AUR — пакеты, которых нет в официальном репозитории. Удобно ставить через <code style="color:var(--color-primary)">yay</code>.</p>
+                            <div class="code-block">
+                                <div class="code-header"><span>aur</span><button class="copy-btn" onclick="copyCode(this)">[ copy ]</button></div>
+                                <pre><code># Сначала установите yay
+sudo pacman -S git base-devel
+git clone https://aur.archlinux.org/yay.git
+cd yay
+makepkg -si
+
+# Теперь можно ставить из AUR
+yay -S google-chrome</code></pre>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="distro-content" id="install-app-astra">
+                <div class="steps">
+                    <div class="step">
+                        <div class="step-num">1</div>
+                        <div class="step-body">
+                            <h3>Найдите пакет</h3>
+                            <div class="code-block">
+                                <div class="code-header"><span>astra linux</span><button class="copy-btn" onclick="copyCode(this)">[ copy ]</button></div>
+                                <pre><code>apt search название_программы</code></pre>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="step">
+                        <div class="step-num">2</div>
+                        <div class="step-body">
+                            <h3>Установите</h3>
+                            <div class="code-block">
+                                <div class="code-header"><span>astra linux</span><button class="copy-btn" onclick="copyCode(this)">[ copy ]</button></div>
+                                <pre><code>sudo apt install название_пакета</code></pre>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="step">
+                        <div class="step-num">3</div>
+                        <div class="step-body">
+                            <h3>Flatpak — свежие версии</h3>
+                            <p>В Astra Linux можно подключить Flathub — это даст доступ к большому числу программ, которых нет в официальных репозиториях.</p>
+                            <div class="code-block">
+                                <div class="code-header"><span>flatpak</span><button class="copy-btn" onclick="copyCode(this)">[ copy ]</button></div>
+                                <pre><code>sudo apt install flatpak
+flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+flatpak install flathub org.videolan.VLC</code></pre>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="distro-content" id="install-app-redos">
+                <div class="steps">
+                    <div class="step">
+                        <div class="step-num">1</div>
+                        <div class="step-body">
+                            <h3>Найдите пакет</h3>
+                            <div class="code-block">
+                                <div class="code-header"><span>red os</span><button class="copy-btn" onclick="copyCode(this)">[ copy ]</button></div>
+                                <pre><code>dnf search название_программы</code></pre>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="step">
+                        <div class="step-num">2</div>
+                        <div class="step-body">
+                            <h3>Посмотрите информацию</h3>
+                            <div class="code-block">
+                                <div class="code-header"><span>red os</span><button class="copy-btn" onclick="copyCode(this)">[ copy ]</button></div>
+                                <pre><code>dnf info название_пакета</code></pre>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="step">
+                        <div class="step-num">3</div>
+                        <div class="step-body">
+                            <h3>Установите</h3>
+                            <div class="code-block">
+                                <div class="code-header"><span>red os</span><button class="copy-btn" onclick="copyCode(this)">[ copy ]</button></div>
+                                <pre><code>sudo dnf install название_пакета</code></pre>
+                            </div>
+                            <div class="tip">💡 <span class="tip-label">Несколько сразу</span>
+                                Можно ставить сразу несколько пакетов одной командой:<br>
+                                <code style="color:var(--color-primary)">sudo dnf install vlc gimp firefox</code>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="step">
+                        <div class="step-num">4</div>
+                        <div class="step-body">
+                            <h3>Flatpak</h3>
+                            <p>Для свежих версий программ используйте Flatpak.</p>
+                            <div class="code-block">
+                                <div class="code-header"><span>flatpak</span><button class="copy-btn" onclick="copyCode(this)">[ copy ]</button></div>
+                                <pre><code>sudo dnf install flatpak
+flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+flatpak install flathub org.videolan.VLC</code></pre>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============ 4. УДАЛЕНИЕ ============ -->
+    <section class="section glass" id="remove-app">
+        <div class="section__head">
+            <span class="section__num">[04]</span>
+            <h2 class="section__title">Удаление программ</h2>
+        </div>
+        <div class="section__body">
+            <div class="distro-content active" id="remove-app-ubuntu">
+                <div class="steps">
+                    <div class="step">
+                        <div class="step-num">1</div>
+                        <div class="step-body">
+                            <h3>Удалите программу</h3>
+                            <p>Конфигурационные файлы останутся — это безопасно, можно будет вернуть настройки при повторной установке.</p>
+                            <div class="code-block">
+                                <div class="code-header"><span>ubuntu / debian</span><button class="copy-btn" onclick="copyCode(this)">[ copy ]</button></div>
+                                <pre><code>sudo apt remove название_пакета</code></pre>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="step">
+                        <div class="step-num">2</div>
+                        <div class="step-body">
+                            <h3>Полное удаление с конфигами</h3>
+                            <div class="code-block">
+                                <div class="code-header"><span>ubuntu / debian</span><button class="copy-btn" onclick="copyCode(this)">[ copy ]</button></div>
+                                <pre><code>sudo apt purge название_пакета</code></pre>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="step">
+                        <div class="step-num">3</div>
+                        <div class="step-body">
+                            <h3>Удалите <a href="#term-unneeded" class="term" data-term="unneeded">ненужные пакеты</a></h3>
+                            <p>Убирает <a href="#term-dependency" class="term" data-term="dependency">зависимости</a>, которые были установлены вместе с программой и теперь не нужны.</p>
+                            <div class="code-block">
+                                <div class="code-header"><span>ubuntu / debian</span><button class="copy-btn" onclick="copyCode(this)">[ copy ]</button></div>
+                                <pre><code>sudo apt autoremove</code></pre>
+                            </div>
+                            <div class="tip tip--ok">✔ <span class="tip-label">Одна команда на всё</span>
+                                Удалить программу и почистить <a href="#term-unneeded" class="term" data-term="unneeded">ненужные пакеты</a> сразу:<br>
+                                <code style="color:var(--color-primary)">sudo apt purge название_пакета &amp;&amp; sudo apt autoremove</code>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="step">
+                        <div class="step-num">4</div>
+                        <div class="step-body">
+                            <h3>Удалите Flatpak / Snap</h3>
+                            <div class="code-block">
+                                <div class="code-header"><span>flatpak</span><button class="copy-btn" onclick="copyCode(this)">[ copy ]</button></div>
+                                <pre><code>flatpak uninstall org.videolan.VLC
+flatpak uninstall --unused</code></pre>
+                            </div>
+                            <div class="code-block">
+                                <div class="code-header"><span>snap</span><button class="copy-btn" onclick="copyCode(this)">[ copy ]</button></div>
+                                <pre><code>sudo snap remove spotify</code></pre>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="distro-content" id="remove-app-arch">
+                <div class="steps">
+                    <div class="step">
+                        <div class="step-num">1</div>
+                        <div class="step-body">
+                            <h3>Удалите программу</h3>
+                            <div class="code-block">
+                                <div class="code-header"><span>arch linux</span><button class="copy-btn" onclick="copyCode(this)">[ copy ]</button></div>
+                                <pre><code>sudo pacman -R название_пакета</code></pre>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="step">
+                        <div class="step-num">2</div>
+                        <div class="step-body">
+                            <h3>Удалите программу и <a href="#term-unneeded" class="term" data-term="unneeded">ненужные пакеты</a></h3>
+                            <p>Вместе с <a href="#term-dependency" class="term" data-term="dependency">зависимостями</a>, которые больше не нужны системе.</p>
+                            <div class="code-block">
+                                <div class="code-header"><span>arch linux</span><button class="copy-btn" onclick="copyCode(this)">[ copy ]</button></div>
+                                <pre><code>sudo pacman -Rs название_пакета</code></pre>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="step">
+                        <div class="step-num">3</div>
+                        <div class="step-body">
+                            <h3>Удалите вместе с конфигами</h3>
+                            <div class="tip tip--warn">⚠ <span class="tip-label">Осторожно</span>
+                                <code style="color:var(--color-primary)">-Rsc</code> удалит программу, её <a href="#term-dependency" class="term" data-term="dependency">зависимости</a> и все конфигурационные файлы. Отменить нельзя.
+                            </div>
+                            <div class="code-block">
+                                <div class="code-header"><span>arch linux</span><button class="copy-btn" onclick="copyCode(this)">[ copy ]</button></div>
+                                <pre><code>sudo pacman -Rsc название_пакета</code></pre>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="step">
+                        <div class="step-num">4</div>
+                        <div class="step-body">
+                            <h3>Найдите осиротевшие <a href="#term-package" class="term" data-term="package">пакеты</a></h3>
+                            <p>Осиротевшие — это установленные вручную, но больше не нужные. Обычно их удаляют так:</p>
+                            <div class="code-block">
+                                <div class="code-header"><span>arch linux</span><button class="copy-btn" onclick="copyCode(this)">[ copy ]</button></div>
+                                <pre><code>sudo pacman -Qdtq
+sudo pacman -Rns $(pacman -Qdtq)</code></pre>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="distro-content" id="remove-app-astra">
+                <div class="steps">
+                    <div class="step">
+                        <div class="step-num">1</div>
+                        <div class="step-body">
+                            <h3>Удалите программу</h3>
+                            <p>Конфигурационные файлы останутся — это безопасно, можно будет вернуть настройки при повторной установке.</p>
+                            <div class="code-block">
+                                <div class="code-header"><span>astra linux</span><button class="copy-btn" onclick="copyCode(this)">[ copy ]</button></div>
+                                <pre><code>sudo apt remove название_пакета</code></pre>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="step">
+                        <div class="step-num">2</div>
+                        <div class="step-body">
+                            <h3>Полное удаление с конфигами</h3>
+                            <div class="code-block">
+                                <div class="code-header"><span>astra linux</span><button class="copy-btn" onclick="copyCode(this)">[ copy ]</button></div>
+                                <pre><code>sudo apt purge название_пакета</code></pre>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="step">
+                        <div class="step-num">3</div>
+                        <div class="step-body">
+                            <h3>Уберите ненужные пакеты</h3>
+                            <div class="code-block">
+                                <div class="code-header"><span>astra linux</span><button class="copy-btn" onclick="copyCode(this)">[ copy ]</button></div>
+                                <pre><code>sudo apt autoremove</code></pre>
+                            </div>
+                            <div class="tip tip--ok">✔ <span class="tip-label">Одна команда на всё</span>
+                                <code style="color:var(--color-primary)">sudo apt purge название_пакета && sudo apt autoremove</code>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="distro-content" id="remove-app-redos">
+                <div class="steps">
+                    <div class="step">
+                        <div class="step-num">1</div>
+                        <div class="step-body">
+                            <h3>Удалите программу</h3>
+                            <div class="code-block">
+                                <div class="code-header"><span>red os</span><button class="copy-btn" onclick="copyCode(this)">[ copy ]</button></div>
+                                <pre><code>sudo dnf remove название_пакета</code></pre>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="step">
+                        <div class="step-num">2</div>
+                        <div class="step-body">
+                            <h3>Удалите программу и ненужные зависимости</h3>
+                            <p>Флаг <code style="color:var(--color-primary)">autoremove</code> убирает <a href="#term-dependency" class="term" data-term="dependency">зависимости</a>, которые больше не нужны.</p>
+                            <div class="code-block">
+                                <div class="code-header"><span>red os</span><button class="copy-btn" onclick="copyCode(this)">[ copy ]</button></div>
+                                <pre><code>sudo dnf remove название_пакета
+sudo dnf autoremove -y</code></pre>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="step">
+                        <div class="step-num">3</div>
+                        <div class="step-body">
+                            <h3>Удалите Flatpak</h3>
+                            <div class="code-block">
+                                <div class="code-header"><span>flatpak</span><button class="copy-btn" onclick="copyCode(this)">[ copy ]</button></div>
+                                <pre><code>flatpak uninstall org.videolan.VLC
+flatpak uninstall --unused</code></pre>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============ 5. ШПАРГАЛКА КОМАНД ============ -->
+    <section class="section glass" id="cheatsheet">
+        <div class="section__head">
+            <span class="section__num">[05]</span>
+            <h2 class="section__title">Шпаргалка команд</h2>
+        </div>
+        <div class="section__body">
+            <p class="section__intro">Основные команды под рукой — по всем четырём дистрибутивам сразу. Нажмите на любую команду, чтобы скопировать её. Установку всегда можно разобрать по шагам, а вот держать команды перед глазами — удобнее.</p>
+
+            <div class="cheat-legend">
+                <span class="cheat-badge"><b>Ubuntu</b> · apt</span>
+                <span class="cheat-badge"><b>Arch</b> · pacman</span>
+                <span class="cheat-badge"><b>Astra Linux</b> · apt</span>
+                <span class="cheat-badge"><b>RED OS</b> · dnf</span>
+            </div>
+
+            <div class="table-wrap">
+                <table class="cheat-table">
+                    <thead>
+                        <tr>
+                            <th>Задача</th>
+                            <th>Ubuntu</th>
+                            <th>Arch Linux</th>
+                            <th>Astra Linux</th>
+                            <th>RED OS</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Обновить списки пакетов</td>
+                            <td><code class="cmd-cell">sudo apt update</code></td>
+                            <td><span class="muted-note">не отдельно — см. обновление</span></td>
+                            <td><code class="cmd-cell">sudo apt update</code></td>
+                            <td><code class="cmd-cell">sudo dnf makecache</code></td>
+                        </tr>
+                        <tr>
+                            <td>Обновить систему</td>
+                            <td><code class="cmd-cell">sudo apt upgrade</code></td>
+                            <td><code class="cmd-cell">sudo pacman -Syu</code></td>
+                            <td><code class="cmd-cell">sudo apt full-upgrade</code></td>
+                            <td><code class="cmd-cell">sudo dnf upgrade</code></td>
+                        </tr>
+                        <tr>
+                            <td>Установить программу</td>
+                            <td><code class="cmd-cell">sudo apt install пакет</code></td>
+                            <td><code class="cmd-cell">sudo pacman -S пакет</code></td>
+                            <td><code class="cmd-cell">sudo apt install пакет</code></td>
+                            <td><code class="cmd-cell">sudo dnf install пакет</code></td>
+                        </tr>
+                        <tr>
+                            <td>Удалить программу</td>
+                            <td><code class="cmd-cell">sudo apt remove пакет</code></td>
+                            <td><code class="cmd-cell">sudo pacman -R пакет</code></td>
+                            <td><code class="cmd-cell">sudo apt remove пакет</code></td>
+                            <td><code class="cmd-cell">sudo dnf remove пакет</code></td>
+                        </tr>
+                        <tr>
+                            <td>Удалить с конфигами и зависимостями</td>
+                            <td><code class="cmd-cell">sudo apt purge пакет</code></td>
+                            <td><code class="cmd-cell">sudo pacman -Rns пакет</code></td>
+                            <td><code class="cmd-cell">sudo apt purge пакет</code></td>
+                            <td><code class="cmd-cell">sudo dnf remove пакет</code></td>
+                        </tr>
+                        <tr>
+                            <td>Очистить ненужное</td>
+                            <td><code class="cmd-cell">sudo apt autoremove</code></td>
+                            <td><code class="cmd-cell">sudo pacman -Rns $(pacman -Qdtq)</code></td>
+                            <td><code class="cmd-cell">sudo apt autoremove</code></td>
+                            <td><code class="cmd-cell">sudo dnf autoremove</code></td>
+                        </tr>
+                        <tr>
+                            <td>Найти пакет</td>
+                            <td><code class="cmd-cell">apt search пакет</code></td>
+                            <td><code class="cmd-cell">pacman -Ss пакет</code></td>
+                            <td><code class="cmd-cell">apt search пакет</code></td>
+                            <td><code class="cmd-cell">dnf search пакет</code></td>
+                        </tr>
+                        <tr>
+                            <td>Информация о пакете</td>
+                            <td><code class="cmd-cell">apt show пакет</code></td>
+                            <td><code class="cmd-cell">pacman -Si пакет</code></td>
+                            <td><code class="cmd-cell">apt show пакет</code></td>
+                            <td><code class="cmd-cell">dnf info пакет</code></td>
+                        </tr>
+                        <tr>
+                            <td>Список установленных</td>
+                            <td><code class="cmd-cell">dpkg -l</code></td>
+                            <td><code class="cmd-cell">pacman -Q</code></td>
+                            <td><code class="cmd-cell">dpkg -l</code></td>
+                            <td><code class="cmd-cell">dnf list installed</code></td>
+                        </tr>
+                        <tr>
+                            <td>Установить из файла</td>
+                            <td><code class="cmd-cell">sudo apt install ./пакет.deb</code></td>
+                            <td><code class="cmd-cell">sudo pacman -U пакет.tar.zst</code></td>
+                            <td><code class="cmd-cell">sudo apt install ./пакет.deb</code></td>
+                            <td><code class="cmd-cell">sudo dnf install ./пакет.rpm</code></td>
+                        </tr>
+                        <tr>
+                            <td>Какие файлы у пакета</td>
+                            <td><code class="cmd-cell">dpkg -L пакет</code></td>
+                            <td><code class="cmd-cell">pacman -Ql пакет</code></td>
+                            <td><code class="cmd-cell">dpkg -L пакет</code></td>
+                            <td><code class="cmd-cell">dnf repoquery -l пакет</code></td>
+                        </tr>
+                        <tr>
+                            <td>К какому пакету относится файл</td>
+                            <td><code class="cmd-cell">dpkg -S /путь/к/файлу</code></td>
+                            <td><code class="cmd-cell">pacman -Qo /путь/к/файлу</code></td>
+                            <td><code class="cmd-cell">dpkg -S /путь/к/файлу</code></td>
+                            <td><code class="cmd-cell">dnf provides /путь/к/файлу</code></td>
+                        </tr>
+                        <tr>
+                            <td>Очистить кэш пакетов</td>
+                            <td><code class="cmd-cell">sudo apt clean</code></td>
+                            <td><code class="cmd-cell">sudo pacman -Sc</code></td>
+                            <td><code class="cmd-cell">sudo apt clean</code></td>
+                            <td><code class="cmd-cell">sudo dnf clean all</code></td>
+                        </tr>
+                        <tr>
+                            <td>Свежие / уникальные программы</td>
+                            <td><code class="cmd-cell">flatpak install</code></td>
+                            <td><code class="cmd-cell">yay -S пакет</code></td>
+                            <td><code class="cmd-cell">flatpak install</code></td>
+                            <td><code class="cmd-cell">flatpak install</code></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <p class="cheat-note">💡 <b>Astra Linux</b> и <b>Ubuntu</b> построены на Debian — команды apt у них совпадают. <b>RED OS</b> построен на RPM (как RHEL/Fedora) — используется dnf. <b>Arch</b> — pacman, обновление и установка списков там одна команда <code style="color:var(--color-primary)">-Syu</code>.</p>
+        </div>
+    </section>
+
+    <!-- ============ 6. СЛОВАРЬ ============ -->
+    <section class="section glass" id="glossary">
+        <div class="section__head">
+            <span class="section__num">[06]</span>
+            <h2 class="section__title">Словарь терминов</h2>
+        </div>
+        <div class="section__body">
+            <p class="section__intro">Термины из руководства простыми словами. Наведите на подсвеченное слово в тексте — появится короткое объяснение.</p>
+
+            <dl class="glossary">
+                <div class="glossary-card" id="term-package">
+                    <dt>Пакет</dt>
+                    <dd>Архив с программой: сами файлы, настройки, служебные скрипты и список зависимостей. Система берёт пакет из репозитория и раскладывает его по нужным папкам — так программа устанавливается за секунды. Аналог — установщик <code style="color:var(--color-primary)">.exe</code> в Windows, только централизованно.</dd>
+                </div>
+
+                <div class="glossary-card" id="term-package-manager">
+                    <dt>Менеджер пакетов</dt>
+                    <dd>Программа, которая устанавливает, обновляет и удаляет пакеты, сама следит за зависимостями и проверяет подпись разработчика: <code style="color:var(--color-primary)">apt</code> в Ubuntu и Astra Linux, <code style="color:var(--color-primary)">pacman</code> в Arch, <code style="color:var(--color-primary)">dnf</code> в RED OS и Fedora, <code style="color:var(--color-primary)">flatpak</code> и <code style="color:var(--color-primary)">snap</code> — надстройки над ними.</dd>
+                </div>
+
+                <div class="glossary-card" id="term-dependency">
+                    <dt>Зависимость</dt>
+                    <dd>Дополнительный пакет, без которого программа не запустится. Менеджер пакетов подтягивает зависимости автоматически, а после удаления программы они часто остаются «сиротами».</dd>
+                </div>
+
+                <div class="glossary-card" id="term-unneeded">
+                    <dt>Ненужные пакеты</dt>
+                    <dd>Остатки удалённых программ: осиротевшие зависимости и старые кэши. Они занимают место на диске. Удаляются командами <code style="color:var(--color-primary)">sudo apt autoremove</code> (Ubuntu, Astra Linux), <code style="color:var(--color-primary)">sudo dnf autoremove</code> (RED OS) и <code style="color:var(--color-primary)">sudo pacman -Rns $(pacman -Qdtq)</code> (Arch).</dd>
+                </div>
+
+                <div class="glossary-card" id="term-repo">
+                    <dt>Репозиторий</dt>
+                    <dd>Проверенное хранилище пакетов дистрибутива. Команда <code style="color:var(--color-primary)">update</code> лишь обновляет список репозиториев, а <code style="color:var(--color-primary)">upgrade</code> / <code style="color:var(--color-primary)">install</code> уже скачивают из них файлы.</dd>
+                </div>
+
+                <div class="glossary-card" id="term-aur">
+                    <dt>AUR (Arch User Repository)</dt>
+                    <dd>Репозиторий пакетов от сообщества Arch. Содержит скрипты сборки, а не готовые программы. Ставится через <code style="color:var(--color-primary)">yay</code> или <code style="color:var(--color-primary)">paru</code>.</dd>
+                </div>
+
+                <div class="glossary-card" id="term-terminal">
+                    <dt>Терминал</dt>
+                    <dd>Окно для ввода команд текстом. Быстрее и точнее мышы: одна команда заменяет десяток кликов. Открыть — <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>T</kbd>.</dd>
+                </div>
+
+                <div class="glossary-card" id="term-sudo">
+                    <dt>sudo</dt>
+                    <dd>Приставка «выполнить от имени администратора». Нужна для системных действий: установки, удаления, обновления. Без неё система отказывается менять общие файлы.</dd>
+                </div>
+
+                <div class="glossary-card" id="term-distro">
+                    <dt>Дистрибутив</dt>
+                    <dd>Сборка Linux: ядро + набор программ + менеджер пакетов + оформление. Ubuntu и Astra Linux — на базе Debian (apt, для новичков и госструктур), Arch — «собери сам» (pacman), RED OS — на базе RPM (dnf, российский дистрибутив для бизнеса и госструктур).</dd>
+                </div>
+
+                <div class="glossary-card" id="term-liveusb">
+                    <dt>Live-флешка</dt>
+                    <dd>Флешка, с которой Linux запускается без установки — можно всё посмотреть и ничего не испортить на компьютере.</dd>
+                </div>
+
+                <div class="glossary-card" id="term-vm">
+                    <dt>Виртуальная машина</dt>
+                    <dd>Компьютер внутри компьютера. Linux работает в окне обычной Windows — идеально для тренировки. Программы: VirtualBox, VMware Workstation.</dd>
+                </div>
+
+                <div class="glossary-card" id="term-boot">
+                    <dt>Boot Menu / UEFI</dt>
+                    <dd>Boot Menu — меню выбора, с чего загружаться (флешка, диск). UEFI — современный аналог BIOS, который управляет загрузкой. Клавиши входа: <kbd>F12</kbd>, <kbd>F8</kbd>, <kbd>F10</kbd>, <kbd>Esc</kbd>, <kbd>Del</kbd>.</dd>
+                </div>
+            </dl>
+        </div>
+    </section>
+
+</main>
+
+<button class="to-top" id="toTop" aria-label="Наверх">↑</button>
+
+<script>
+/* ============================================================
+   1. КОPIРОВНИЕ КОДА
+   ============================================================ */
+function copyCode(btn) {
+    const code = btn.closest('.code-block').querySelector('code').textContent.trim();
+    const done = () => {
+        const old = btn.textContent;
+        btn.textContent = '[ copied ✓ ]';
+        setTimeout(() => { btn.textContent = old; }, 1500);
+    };
+    if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(code).then(done).catch(() => fallbackCopy(code, done));
+    } else {
+        fallbackCopy(code, done);
+    }
+}
+
+function fallbackCopy(text, done) {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand('copy'); done(); } catch (e) { /* ignore */ }
+    document.body.removeChild(ta);
+}
+
+/* ============================================================
+   2. ГЛОБАЛЬНЫЙ ПЕРЕКЛЮЧАТЕЛЬ ДИСТРИБУТИВА
+   ============================================================ */
+const DISTRO_NAMES = { ubuntu: 'ubuntu', arch: 'arch', astra: 'astra', redos: 'red os' };
+
+function setDistro(distro) {
+    if (!DISTRO_NAMES[distro]) return;
+
+    document.querySelectorAll('.distro-content').forEach(c => {
+        c.classList.toggle('active', c.id.endsWith('-' + distro));
+    });
+
+    document.querySelectorAll('.distro-switch__btn').forEach(b => {
+        const on = b.dataset.distro === distro;
+        b.classList.toggle('active', on);
+        b.setAttribute('aria-selected', String(on));
+    });
+
+    const label = document.getElementById('hero-distro-label');
+    if (label) label.textContent = DISTRO_NAMES[distro];
+
+    try { localStorage.setItem('distro', distro); } catch (e) { /* ignore */ }
+}
+
+(function initDistro() {
+    let saved = 'ubuntu';
+    try { saved = localStorage.getItem('distro') || 'ubuntu'; } catch (e) { /* ignore */ }
+    if (!DISTRO_NAMES[saved]) saved = 'ubuntu';
+    setDistro(saved);
+})();
+
+/* ============================================================
+   2b. КОПИРОВАНИЕ КОМАНД ИЗ ШПАРГАЛКИ ПО КЛИКУ
+   ============================================================ */
+(function initCheatCopy() {
+    document.querySelectorAll('.cheat-table .cmd-cell').forEach(cell => {
+        cell.title = 'Нажмите, чтобы скопировать';
+        cell.addEventListener('click', () => {
+            const text = cell.textContent.trim();
+            const done = () => {
+                cell.classList.add('copied');
+                setTimeout(() => cell.classList.remove('copied'), 1200);
+            };
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(text).then(done).catch(() => fallbackCopy(text, done));
+            } else {
+                fallbackCopy(text, done);
+            }
+        });
+    });
+})();
+
+/* ============================================================
+   3. ПОДСКАЗКИ НАД СЛОВАМИ-ТЕРМИНАМИ
+   ============================================================ */
+const TERMS = {
+    package: {
+        title: 'Пакет',
+        text: 'Архив с программой и списком того, что ей нужно для работы. Ставится одной командой.',
+        href: '#term-package'
+    },
+    manager: {
+        title: 'Менеджер пакетов',
+        text: 'Программа, которая ставит, обновляет и удаляет пакеты: apt, pacman, flatpak.',
+        href: '#term-package-manager'
+    },
+    dependency: {
+        title: 'Зависимость',
+        text: 'Дополнительный пакет, без которого программа не запустится.',
+        href: '#term-dependency'
+    },
+    unneeded: {
+        title: 'Ненужные пакеты',
+        text: 'Остатки удалённых программ: осиротевшие зависимости и старый кэш. Освобождаются командами autoremove.',
+        href: '#term-unneeded'
+    },
+    repo: {
+        title: 'Репозиторий',
+        text: 'Проверенное хранилище пакетов дистрибутива.',
+        href: '#term-repo'
+    }
+};
+
+(function initTerms() {
+    document.querySelectorAll('.term[data-term]').forEach((el, i) => {
+        const t = TERMS[el.dataset.term];
+        if (!t) return;
+
+        const tipId = 'term-pop-' + i;
+        const tip = document.createElement('span');
+        tip.className = 'term-pop';
+        tip.id = tipId;
+        tip.setAttribute('role', 'tooltip');
+        tip.innerHTML = '<b>' + t.title + '</b>' + t.text +
+            ' <a href="' + t.href + '">подробнее →</a>';
+        el.appendChild(tip);
+        el.setAttribute('aria-describedby', tipId);
+
+        // На устройствах без наведения первый тап — подсказка, второй — переход
+        el.addEventListener('click', (e) => {
+            const coarse = window.matchMedia('(hover: none)').matches;
+            if (coarse && !el.classList.contains('active')) {
+                e.preventDefault();
+                document.querySelectorAll('.term.active').forEach(o => o.classList.remove('active'));
+                el.classList.add('active');
+            }
+        });
+    });
+
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('.term')) {
+            document.querySelectorAll('.term.active').forEach(o => o.classList.remove('active'));
+        }
+    });
+})();
+
+/* ============================================================
+   4. «МАТРИЧНЫЙ» ДОЖДЬ НА ФОНЕ
+   ============================================================ */
+(function initMatrix() {
+    const canvas = document.getElementById('matrix');
+    if (!canvas) return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+    const ctx = canvas.getContext('2d');
+    const chars = 'アイウエオカキクケコサシスセソ01<>{}[]#$%&*/=+sudoapt';
+    const fontSize = 14;
+    let columns = 0;
+    let drops = [];
+
+    function resize() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        columns = Math.floor(canvas.width / fontSize);
+        drops = new Array(columns).fill(1).map(() => Math.random() * -100);
+    }
+    resize();
+    window.addEventListener('resize', resize);
+
+    let last = 0;
+    function draw(now) {
+        requestAnimationFrame(draw);
+        if (now - last < 60) return;   // ~16 кадров/с — щадит глаза и батарею
+        last = now;
+
+        ctx.fillStyle = 'rgba(8, 8, 14, 0.09)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.font = fontSize + 'px monospace';
+
+        for (let i = 0; i < drops.length; i++) {
+            const char = chars[Math.floor(Math.random() * chars.length)];
+            const x = i * fontSize;
+            const y = drops[i] * fontSize;
+            ctx.fillStyle = y < fontSize * 2 ? '#e8ffe8' : '#00ff41';
+            ctx.fillText(char, x, y);
+            if (y > canvas.height && Math.random() > 0.976) drops[i] = 0;
+            drops[i]++;
+        }
+    }
+    requestAnimationFrame(draw);
+})();
+
+/* ============================================================
+   5. ПЕЧАТАЮЩИЙСЯ ТЕРМИНАЛ
+   ============================================================ */
+(function initTerminal() {
+    const out = document.getElementById('term-out');
+    if (!out) return;
+
+    const script = [
+        { cmd: 'whoami', out: 'guest' },
+        { cmd: 'cat goal.txt', out: 'установить · обновить · ставить · сносить' },
+                    { cmd: 'ls ./sections', out: '01_install  02_update  03_apps  04_remove  05_cheat  06_glossary' },
+        { cmd: 'sudo make me a_user', out: 'готовность 100% — листайте вниз ↓' }
+    ];
+
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const wait = (ms) => new Promise(r => setTimeout(r, ms));
+
+    function line(html) {
+        const div = document.createElement('div');
+        div.innerHTML = html;
+        out.appendChild(div);
+        return div;
+    }
+
+    async function run() {
+        for (const step of script) {
+            const l = line('<span class="prompt">user@linux:~$</span> <span class="cmd"></span>');
+            const cmdEl = l.querySelector('.cmd');
+
+            if (reduce) {
+                cmdEl.textContent = step.cmd;
+            } else {
+                for (const ch of step.cmd) {
+                    cmdEl.textContent += ch;
+                    await wait(38);
+                }
+                await wait(260);
+            }
+            line('<span class="out">' + step.out + '</span>');
+            if (!reduce) await wait(380);
+        }
+        line('<span class="prompt">user@linux:~$</span> <span class="hl">ls -la ./разделы</span>');
+    }
+
+    run();
+})();
+
+/* ============================================================
+   6. ШАПКА, АКТИВНЫЙ ПУНКТ МЕНЮ, КНОПКИ
+   ============================================================ */
+(function initUI() {
+    const header = document.getElementById('site-header');
+    const burger = document.getElementById('burger');
+    const nav = document.getElementById('nav');
+    const toTop = document.getElementById('toTop');
+    const links = [...document.querySelectorAll('.nav-link')];
+    const sections = links
+        .map(l => document.querySelector(l.getAttribute('href')))
+        .filter(Boolean);
+
+    function onScroll() {
+        const y = window.scrollY;
+        header.classList.toggle('scrolled', y > 20);
+        toTop.classList.toggle('visible', y > 400);
+
+        let current = null;
+        sections.forEach(s => {
+            if (s.getBoundingClientRect().top <= 160) current = s.id;
+        });
+        links.forEach(l => l.classList.toggle('active', l.getAttribute('href') === '#' + current));
+    }
+
+    window.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
+
+    burger.addEventListener('click', () => {
+        const open = nav.classList.toggle('open');
+        burger.classList.toggle('active', open);
+        burger.setAttribute('aria-expanded', String(open));
+    });
+
+    nav.addEventListener('click', (e) => {
+        if (e.target.classList.contains('nav-link')) {
+            nav.classList.remove('open');
+            burger.classList.remove('active');
+            burger.setAttribute('aria-expanded', 'false');
+        }
+    });
+
+    toTop.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
+})();
+</script>
+</body>
+</html>
